@@ -6,8 +6,6 @@ import hashlib
 import uuid
 import html
 import os
-import logging
-from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__, template_folder='.')
 Method='local'
