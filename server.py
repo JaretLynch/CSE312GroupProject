@@ -8,12 +8,12 @@ import html
 import os
 
 app = Flask(__name__, template_folder='.')
-Method='local'
+# Method=''
 
-if Method=='local':
-    mongo_client = MongoClient("mongodb+srv://Jaretl123:Jaretl123@cluster0.dpg3dfq.mongodb.net/")
-else:
-    mongo_client = MongoClient("mongo")
+# if Method=='local':
+#     mongo_client = MongoClient("mongodb+srv://Jaretl123:Jaretl123@cluster0.dpg3dfq.mongodb.net/")
+# else:
+mongo_client = MongoClient("mongo")
 
 db = mongo_client["CSE312"] 
 if "Comments" not in db.list_collection_names():
