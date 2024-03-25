@@ -24,9 +24,60 @@
                 I love programming
             </p>
         </div>
+        <h1>Welcome</h1>
+            {% if username %}
+            <p>Logged in as: {{ username }}</p>
+            {% endif %}
+        <h2>Error Message</h2>
+        <div id="error-message"></div>
+        <h2>Registration Form</h2>
+        <form action="http://localhost:8080/register" method="post">
+            <label for="username">Username:</label><br>
+            <input type="text" id="username" name="username" required><br>
+            <label for="password1">Password:</label><br>
+            <input type="password" id="password1" name="password1" required><br>
+            <label for="password2">Confirm Password:</label><br>
+            <input type="password" id="password2" name="password2" required><br>
+            <input type="submit" value="Register">
+        </form>
+        <h2>Login Form</h2>
+        <form id="loginForm" action="/login" method="POST">
+            <label for="username">Username:</label><br>
+            <input type="text" id="username" name="username" required><br><br>
 
-    </div>    
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" name="password" required><br><br>
 
+            <input type="submit" value="Login">
+        </form>
+        <h2>Logout Button</h2>
+        <form id="logoutForm" action="/logout" method="GET">
+            <input type="submit" value="Logout">
+        </form>
+    </div>
+    <h2>Comments</h2>
+    <div id="comments">
+        <!-- Existing comments will be displayed here -->
+        {% for comment in comments %}
+        <div class="comment">
+            <strong>{{ comment.author }}</strong>: {{ comment.content }}
+            <span class="comment-id">ID: {{ comment.comment_id }}</span>
+            <button class="like-btn" data-comment-id="{{ comment.comment_id }}">Like</button>
+            <span class="likes-count">Likes: {{ comment.likes|length }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <form action="/create_comment" method="POST">
+        <label for="comment">Type your comment:</label><br>
+        <input type="text" id="comment" name="comment"><br>
+        <button type="submit">Send</button>
+    </form>
+    {% if success_message %}
+    <div class="success-message">
+        <p>{{ success_message }}</p>
+    </div>
+    {% endif %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="/javascript.js"></script>
 </body>
 
