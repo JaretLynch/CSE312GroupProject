@@ -37,7 +37,7 @@ def validate_video_signature(signature):
             return image_type
     return None
 
-db = mongo_client["CSE312"] 
+db = mongo_client["CSE312Group"] 
 if "Comments" not in db.list_collection_names():
     db.create_collection("Comments")
 if "Tokens" not in db.list_collection_names():
@@ -259,6 +259,11 @@ def get_comments():
     comments_list = []
     for comment in comments:
         comment['_id'] = str(comment['_id'])
+
+        user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
+        if user_data and 'profile_file' in user_data:
+            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50" ">'
+            comment['profile_pic'] = profile_img_html
         comments_list.append(comment)
     return jsonify({'comments': comments_list})
 
@@ -274,9 +279,11 @@ def upload_profile_picture():
     if not user_data:
         error_message = "Only authenticated users can upload profile pictures"
         return jsonify({'error': error_message}), 400
-    if 'image' not in request.files:
+    print(request)
+    print(request.files)
+    if 'upload' not in request.files:
         return 'No image uploaded', 400
-    image_file = request.files['image']
+    image_file = request.files['upload']
     signature = image_file.read(8)
     image_file.seek(0)
     image_type = validate_image_signature(signature)
@@ -284,10 +291,10 @@ def upload_profile_picture():
         return 'Invalid file format', 400
     id = get_next_media_id()
     image_filename = f'uploaded_media{id}.' + image_type
-    image_path = os.path.join('/app/media/', image_filename)
+    image_path = os.path.join(os.path.dirname(__file__), 'img', image_filename)
     image_file.save(image_path)
     username = user_data.get('username')
-    user_data = Users.update_one({"username": username}, {"$set": {"profile_file": f"/media/{image_filename}"}})
+    user_data = Users.update_one({"username": username}, {"$set": {"profile_file": f"/img/{image_filename}"}})
     response = redirect(url_for('HomePage', username=username))
     return response
 
