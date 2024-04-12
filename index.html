@@ -13,50 +13,64 @@
     <div class="header">
 
         <div class="image_div">
-
-            <img src="https://people.com/thmb/02xfdPvkpJ-dnSTO62uTB936JGE=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():focal(979x265:981x267)/josh-allen-buffalo-bills-120122-53e3b5e302e74e019091fbe87af68d8a.jpg" alt="The best QB of all time"  width="200" height="150"/>
-            <text>The best QB of all time!</text>
-
+            <img src="https://people.com/thmb/02xfdPvkpJ-dnSTO62uTB936JGE=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():focal(979x265:981x267)/josh-allen-buffalo-bills-120122-53e3b5e302e74e019091fbe87af68d8a.jpg"  width="200" height="150"/>
         </div>
-
-        <div class="welcome-div">
-            <p id="paragraph">
-                I love programming
-            </p>
-        </div>
-        <h1>Welcome</h1>
+        
+        <h1 class="Welcome-Message">Welcome</h1>
             {% if username %}
             <p>Logged in as: {{ username }}</p>
             {% endif %}
         <h2>Error Message</h2>
+
         <div id="error-message"></div>
-        <h2>Registration Form</h2>
-        <form action="http://localhost:8080/register" method="post">
-            <label for="username">Username:</label><br>
-            <input type="text" id="username" name="username" required><br>
-            <label for="password1">Password:</label><br>
-            <input type="password" id="password1" name="password1" required><br>
-            <label for="password2">Confirm Password:</label><br>
-            <input type="password" id="password2" name="password2" required><br>
-            <input type="submit" value="Register">
-        </form>
-        <h2>Login Form</h2>
-        <form id="loginForm" action="/login" method="POST">
-            <label for="username">Username:</label><br>
-            <input type="text" id="username" name="username" required><br><br>
 
-            <label for="password">Password:</label><br>
-            <input type="password" id="password" name="password" required><br><br>
+        <div class="User-Creation-forms">
 
-            <input type="submit" value="Login">
+            <h2>Registration Form</h2>
+            <form action="http://localhost:8080/register" method="post">
+                <label for="username">Username:</label><br>
+                <input type="text" id="username" name="username" required><br>
+                <label for="password1">Password:</label><br>
+                <input type="password" id="password1" name="password1" required><br>
+                <label for="password2">Confirm Password:</label><br>
+                <input type="password" id="password2" name="password2" required><br>
+                <input type="submit" value="Register">
+            </form>
+            <h2>Login Form</h2>
+            <form id="loginForm" action="/login" method="POST">
+                <label for="username">Username:</label><br>
+                <input type="text" id="username" name="username" required><br><br>
+
+                <label for="password">Password:</label><br>
+                <input type="password" id="password" name="password" required><br><br>
+
+                <input type="submit" value="Login">
+            </form>
+            <h2>Logout Button</h2>
+            <form id="logoutForm" action="/logout" method="GET">
+                <input type="submit" value="Logout">
+            </form>
+            
+    </div>
+
+    <div class="Coment-Forms">
+        <form action="/create_comment" method="POST">
+            <label for="comment">Type your comment:</label><br>
+            <input type="text" id="comment" name="comment">
+            <button type="submit">Send</button>
         </form>
-        <h2>Logout Button</h2>
-        <form id="logoutForm" action="/logout" method="GET">
-            <input type="submit" value="Logout">
+
+        <form action="/upload-profile" id="image-form" method="post" enctype="multipart/form-data">
+            <br/>
+            <label for="form-file">Change profile picture: </label>
+            <input id="form-file" type="file" name="upload">
+            <input type="submit" value="Post">
         </form>
     </div>
-    <h2>Comments</h2>
+
+    <h2 class="Blocked-Header">Comments</h2>
     <div id="comments">
+
         <!-- Existing comments will be displayed here -->
         {% for comment in comments %}
         <div class="comment">
@@ -67,11 +81,8 @@
         </div>
         {% endfor %}
     </div>
-    <form action="/create_comment" method="POST">
-        <label for="comment">Type your comment:</label><br>
-        <input type="text" id="comment" name="comment"><br>
-        <button type="submit">Send</button>
-    </form>
+
+
     {% if success_message %}
     <div class="success-message">
         <p>{{ success_message }}</p>
