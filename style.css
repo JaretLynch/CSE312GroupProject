@@ -1,5 +1,4 @@
 .User-Creation-forms {
-    position: absolute;
     top: 0;
     right: 0;
     margin: 10px;
@@ -26,9 +25,20 @@
 
 }
 .Blocked-Header {
-    background-color: #f0f0f0; /* Light gray background */
-    border: 1px solid #ddd; /* Light gray border */
-    border-radius: 5px; /* Rounded corners */
-    padding: 10px; /* Padding around the content */
-    margin-bottom: 20px; /* Spacing between the header and other content */
+    background-color: #f0f0f0;
+    border: 1px solid #ddd; 
+    border-radius: 5px; 
+    padding: 10px; 
+    margin-bottom: 20px; 
 }
+
+.Chat-forums {
+    background-color: blue;
+    border: 5px solid;
+    top: 60;
+    left: 250;
+    right: 250;
+    display: flex;
+    justify-content: space-between;
+}
+
