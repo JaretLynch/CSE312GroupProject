@@ -70,12 +70,17 @@ $(document).ready(function() {
             $('#comments').empty();
 
             // Iterate over fetched comments and construct HTML elements
+
             data.comments.forEach(function(comment) {
+                
                 var commentElement = $('<div class="comment"></div>');
+                if (comment.profile_pic) {
+                    commentElement.append(comment.profile_pic);
+                }
                 commentElement.append('<strong>' + comment.author + '</strong>: ' + comment.content);
-                commentElement.append('<span class="comment-id">ID: ' + comment.comment_id + '</span>');
+                commentElement.append('<br><span class="comment-id"> ID: ' + comment.comment_id + ' </span>');
                 commentElement.append('<button class="like-btn" data-comment-id="' + comment.comment_id + '">Like</button>');
-                commentElement.append('<span class="likes-count">Likes: ' + comment.likes.length + '</span>');
+                commentElement.append('<span class="likes-count"> Likes: ' + comment.likes.length + '</span>');
 
                 // Append comment element to comments section
                 $('#comments').append(commentElement);
@@ -87,6 +92,6 @@ $(document).ready(function() {
     fetchCommentsAndUpdate();
 
     // Fetch comments and update comments section every 5 seconds
-    setInterval(fetchCommentsAndUpdate, 5000);
+    setInterval(fetchCommentsAndUpdate, 50000);
 });
 

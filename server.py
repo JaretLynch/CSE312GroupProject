@@ -15,7 +15,29 @@ app = Flask(__name__, template_folder='.')
 # else:
 mongo_client = MongoClient("mongo")
 
-db = mongo_client["CSE312"] 
+IMAGE_SIGNATURES = {
+    b'\xFF\xD8\xFF': 'jpg',   # JPEG/JFIF
+    b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A': 'png',   # PNG
+    b'\x47\x49\x46\x38\x37\x61': 'gif',   # GIF
+}
+
+VIDEO_SIGNATURES = {
+    b'\x00\x00\x00\x18ftypmp4': 'mp4'    # MP4
+}
+
+def validate_image_signature(signature):
+    for magic_number, image_type in IMAGE_SIGNATURES.items():
+        if signature.startswith(magic_number):
+            return image_type
+    return None
+
+def validate_video_signature(signature):
+    for magic_number, image_type in VIDEO_SIGNATURES.items():
+        if signature.startswith(magic_number):
+            return image_type
+    return None
+
+db = mongo_client["CSE312Group"] 
 if "Comments" not in db.list_collection_names():
     db.create_collection("Comments")
 if "Tokens" not in db.list_collection_names():
@@ -27,12 +49,16 @@ if "XSRF" not in db.list_collection_names():
 if "id" not in db.list_collection_names():
     db.create_collection("id")
     db["id"].insert_one({"value": 0})
+if "media_id" not in db.list_collection_names():
+    db.create_collection("media_id")
+    db["media_id"].insert_one({"value": 0})
 
 Comments = db["Comments"]
 Tokens=db["Tokens"]
 Users= db["Users"]
 xsrf=db["XSRF"]
 ID = db["id"]
+media_id = db["media_id"]
 bcrypt = Bcrypt()
 
 @app.after_request
@@ -152,21 +178,43 @@ def logout():
 @app.route('/create_comment', methods=['POST'])
 def create_comment():
     content = html.escape(request.form.get('comment'))
-    ID = get_next_id()
+    author = "Guest"  
     auth_token = request.cookies.get('auth_token')
     if auth_token:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         token_data = Tokens.find_one({"token_hash": token_hash})
         if token_data:
             author = token_data.get('username', 'Guest')
+    file = request.files.get('file')
+    if file:
+        signature = file.read(8)
+        file_type = validate_image_signature(signature)
+        if not file_type:
+            file_type = validate_video_signature(signature)
+        if file_type:
+            id = get_next_media_id()
+            media_filename = f'uploaded_media{id}.' + file_type
+            file_path = os.path.join('/app/media/', f'uploaded_file{id}.' + file_type)
+            file.save(file_path)
+            content += f' <{ "img" if file_type in ["jpg", "png", "gif"] else "video" } src=\"/video/{media_filename}\" alt="Uploaded file">'
+            new_comment = {
+                "author": author,
+                "content": content,
+                "comment_id": get_next_id(),
+                "likes": []
+            }
+            Comments.insert_one(new_comment)
         else:
-            author = "Guest"
+            return "Invalid file format", 400
     else:
-        author = "Guest"
-    new_comment = {"author": author, "content": content, "comment_id": ID, "likes": []}
-    Comments.insert_one(new_comment)
-    response = redirect(url_for('HomePage', username=author))
-    return response
+        new_comment = {
+            "author": author,
+            "content": content,
+            "comment_id": get_next_id(),
+            "likes": []
+        }
+        Comments.insert_one(new_comment)
+    return redirect(url_for('HomePage', username=author))
 
 @app.route('/like_comment', methods=['POST'])
 def like_comment():
@@ -199,14 +247,56 @@ def get_next_id():
     ID.update_one({}, {"$set": {"value": current_value + 1}})
     return current_value
 
+def get_next_media_id():
+    document = media_id.find_one()
+    current_value = document.get('value', 0)
+    media_id.update_one({}, {"$set": {"value": current_value + 1}})
+    return current_value
+
 @app.route('/get_comments')
 def get_comments():
     comments = Comments.find()
     comments_list = []
     for comment in comments:
         comment['_id'] = str(comment['_id'])
+
+        user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
+        if user_data and 'profile_file' in user_data:
+            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50" ">'
+            comment['profile_pic'] = profile_img_html
         comments_list.append(comment)
     return jsonify({'comments': comments_list})
+
+#Adds profile data to user's database entry to use as img source
+@app.route('/upload-profile', methods=['POST'])
+def upload_profile_picture():
+    auth_token = request.cookies.get('auth_token')
+    if not auth_token:
+        error_message = "Only authenticated users can upload profile pictures"
+        return jsonify({'error': error_message}), 400
+    token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
+    user_data = Tokens.find_one({"token_hash": token_hash})
+    if not user_data:
+        error_message = "Only authenticated users can upload profile pictures"
+        return jsonify({'error': error_message}), 400
+    print(request)
+    print(request.files)
+    if 'upload' not in request.files:
+        return 'No image uploaded', 400
+    image_file = request.files['upload']
+    signature = image_file.read(8)
+    image_file.seek(0)
+    image_type = validate_image_signature(signature)
+    if not image_type:
+        return 'Invalid file format', 400
+    id = get_next_media_id()
+    image_filename = f'uploaded_media{id}.' + image_type
+    image_path = os.path.join(os.path.dirname(__file__), 'img', image_filename)
+    image_file.save(image_path)
+    username = user_data.get('username')
+    user_data = Users.update_one({"username": username}, {"$set": {"profile_file": f"/img/{image_filename}"}})
+    response = redirect(url_for('HomePage', username=username))
+    return response
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
