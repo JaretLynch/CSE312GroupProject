@@ -4,6 +4,7 @@ function welcome(){
 
 
 $(document).ready(function() {
+    var name = $('#Name').text();
     // Function to handle comment form submission
     $('#comment-form').submit(function(event) {
         event.preventDefault(); // Prevent the form from submitting normally
@@ -16,7 +17,7 @@ $(document).ready(function() {
             url: '/create_comment',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ "comment": content }),
+            data: JSON.stringify({ "comment": content,"destination":name }),
             success: function(data) {
                 // Display success message
                 $('#success-message').text("Comment sent successfully");
@@ -64,8 +65,8 @@ $(document).ready(function() {
     });
 
     // Function to fetch comments and update comments section
-    function fetchCommentsAndUpdate() {
-        $.get('/get_comments', function(data) {
+    function fetchCommentsAndUpdate(destination) {
+        $.get('/get_comments',{destination: destination}, function(data) {
             // Clear existing comments
             $('#comments').empty();
 
@@ -87,11 +88,26 @@ $(document).ready(function() {
             });
         });
     }
-
+    
     // Fetch comments and update comments section initially
-    fetchCommentsAndUpdate();
+    fetchCommentsAndUpdate(name);
 
     // Fetch comments and update comments section every 5 seconds
-    setInterval(fetchCommentsAndUpdate, 50000);
+    setInterval(fetchCommentsAndUpdate, 5000);
 });
 
+function serveChatroom(page){
+    fetch('/' + page, {
+        method: 'GET'
+    })
+    .then(response => {
+        if (response.ok) {
+        } else {
+            console.error('Failed to fetch page:', response.statusText);
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching page:', error);
+    });
+
+}
