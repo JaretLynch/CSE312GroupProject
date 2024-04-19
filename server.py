@@ -52,8 +52,13 @@ if "id" not in db.list_collection_names():
 if "media_id" not in db.list_collection_names():
     db.create_collection("media_id")
     db["media_id"].insert_one({"value": 0})
-
+if "BillsComments" not in db.list_collection_names():
+    db.create_collection("BillsComments")
+if "SabresComments" not in db.list_collection_names():
+    db.create_collection("SabresComments")   
 Comments = db["Comments"]
+BillsComments=db["BillsComments"]
+SabresComments=db["SabresComments"]
 Tokens=db["Tokens"]
 Users= db["Users"]
 xsrf=db["XSRF"]
@@ -89,6 +94,65 @@ def ServeJS():
 @app.route("/style.css")
 def ServeCSS():
     return send_file('./style.css')
+
+@app.route("/Bills")
+def ServeBillsChatroom():
+    comments=list(BillsComments.find())
+    username = request.args.get('username')
+    auth_token = request.cookies.get('auth_token')
+    if auth_token:
+        token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
+        user_token = Tokens.find_one({"token_hash": token_hash})
+        if user_token and user_token['username'] == username:
+            pass
+        else:
+            username = "Guest"
+    chatroom_data = {'Name': 'Bills',
+                     'username':username,
+                     'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
+                     'coments': comments}
+
+
+    return render_template('chatroom.html', data=chatroom_data)
+
+@app.route("/General")
+def ServeGeneralChatroom():
+    comments=list(Comments.find)
+    username = request.args.get('username')
+    auth_token = request.cookies.get('auth_token')
+    if auth_token:
+        token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
+        user_token = Tokens.find_one({"token_hash": token_hash})
+        if user_token and user_token['username'] == username:
+            pass
+        else:
+            username = "Guest"
+    chatroom_data = {'Name': 'General',
+                     'username':username,
+                     'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
+                     'coments': comments}
+    return render_template('chatroom.html', data=chatroom_data)
+
+@app.route("/Sabres")
+def ServeSabresChatroom():
+    comments=list(SabresComments.find())
+    username = request.args.get('username')
+    auth_token = request.cookies.get('auth_token')
+    if auth_token:
+        token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
+        user_token = Tokens.find_one({"token_hash": token_hash})
+        if user_token and user_token['username'] == username:
+            pass
+        else:
+            username = "Guest"
+    chatroom_data = {'Name': 'Sabres',
+                     'username':username,
+                     'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
+                     'coments': comments}
+    print("rendering template")
+    return render_template('chatroom.html', data=chatroom_data)
+
+
 
 @app.route('/img/<path:filename>')
 def serve_image(filename):
@@ -177,6 +241,8 @@ def logout():
 
 @app.route('/create_comment', methods=['POST'])
 def create_comment():
+    destination = request.form.get('destination')
+
     content = html.escape(request.form.get('comment'))
     author = "Guest"  
     auth_token = request.cookies.get('auth_token')
@@ -213,8 +279,17 @@ def create_comment():
             "comment_id": get_next_id(),
             "likes": []
         }
-        Comments.insert_one(new_comment)
-    return redirect(url_for('HomePage', username=author))
+        if destination=="General":
+            Comments.insert_one(new_comment)
+            return redirect(url_for('HomePage', username=author))
+
+        elif destination=="Bills":
+            BillsComments.insert_one(new_comment)
+            return redirect(url_for('ServeBillsChatroom', username=author))
+
+        elif destination=="Sabres":
+            SabresComments.insert_one(new_comment)
+            return redirect(url_for('ServeSabresChatroom', username=author))
 
 @app.route('/like_comment', methods=['POST'])
 def like_comment():
@@ -255,7 +330,13 @@ def get_next_media_id():
 
 @app.route('/get_comments')
 def get_comments():
-    comments = Comments.find()
+    destination = request.args.get('destination')
+    if destination=="General" or destination=="Comments":
+        comments = Comments.find()
+    elif destination=="Bills":
+        comments=BillsComments.find()
+    elif destination=="Sabres":
+        comments=SabresComments.find()
     comments_list = []
     for comment in comments:
         comment['_id'] = str(comment['_id'])
