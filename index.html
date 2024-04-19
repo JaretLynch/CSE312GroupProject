@@ -76,11 +76,11 @@
     </div>
 
     <div class="Coment-Forms">
-        <form action="/create_comment" method="POST">
+        <form id="comment-form">
             <input type="hidden" name="destination" value="General">
             <label for="comment">Type your comment:</label><br>
             <input type="text" id="comment" name="comment">
-            <button type="submit">Send</button>
+            <button id="send-comment">Send</button>
         </form>
 
         <form action="/upload-profile" id="image-form" method="post" enctype="multipart/form-data">
@@ -115,7 +115,7 @@
     </div>
     {% endif %}
 
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="/javascript.js"></script>
 </body>

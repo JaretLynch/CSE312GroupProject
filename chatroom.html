@@ -1,8 +1,9 @@
 <!DOCTYPE html>
+<html lang="en">
 
 <head>
     <title>Programmers App</title>
-    <link rel="stylesheet" type="text/css" href="/style.css"/>
+    <link rel="stylesheet" type="text/css" href="/style.css" />
 </head>
 
 <body>
@@ -14,13 +15,13 @@
     <div class="header">
 
         <div class="image_div">
-            <img src= "{{ data.image }}" width="200" height="150"/>
+            <img src="{{ data.image }}" width="200" height="150" />
         </div>
-        
+
         <h1 class="Welcome-Message">Welcome</h1>
-            {% if data.username %}
-            <p>Logged in as: {{ data.username }}</p>
-            {% endif %}
+        {% if data.username %}
+        <p>Logged in as: {{ data.username }}</p>
+        {% endif %}
 
         <div class="Chat-forums">
             <div>
@@ -28,12 +29,12 @@
                     <button type="submit">HomePage </button>
                 </form>
             </div>
-            <div >
+            <div>
                 <form action="/Sabres" method="GET">
                     <button type="submit">Sabres </button>
                 </form>
             </div>
-            <div >
+            <div>
                 <form action="/General" method="GET">
                     <button type="submit">General </button>
                 </form>
@@ -42,39 +43,38 @@
 
         <div class="Coment-Forms">
 
-            <form action="/create_comment" method="POST">
-                <input type="hidden" name="destination" value="{{data.Name}}">
+            <form id="comment-form">
+                <input type="hidden" id="destination" value="{{ data.Name }}">
                 <label for="comment">Type your comment:</label><br>
                 <input type="text" id="comment" name="comment">
-                <button type="submit">Send</button>
+                <button id="send-comment">Send</button>
             </form>
 
         </div>
     </div>
-    <h2 class="Blocked-Header">{{data.Name}}</h2>
+    <h2 class="Blocked-Header">{{ data.Name }}</h2>
 
-        <div id="comments">
+    <div id="comments">
 
-            {% for comment in data.comments %}
-            <div class="comment">
-                <strong>{{ comment.author }}</strong>: {{ comment.content }}
-                <span class="comment-id">ID: {{ comment.comment_id }}</span>
-                <button class="like-btn" data-comment-id="{{ comment.comment_id }}">Like</button>
-                <span class="likes-count">Likes: {{ comment.likes|length }}</span>
-            </div>
-            {% endfor %}
+        {% for comment in data.comments %}
+        <div class="comment">
+            <strong>{{ comment.author }}</strong>: {{ comment.content }}
+            <span class="comment-id">ID: {{ comment.comment_id }}</span>
+            <button class="like-btn" data-comment-id="{{ comment.comment_id }}">Like</button>
+            <span class="likes-count">Likes: {{ comment.likes|length }}</span>
         </div>
+        {% endfor %}
+    </div>
 
+    {% if success_message %}
+    <div class="success-message">
+        <p>{{ success_message }}</p>
+    </div>
+    {% endif %}
 
-        {% if success_message %}
-        <div class="success-message">
-            <p>{{ success_message }}</p>
-        </div>
-        {% endif %}
-
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="/javascript.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/javascript.js"></script>
 
 </body>
 

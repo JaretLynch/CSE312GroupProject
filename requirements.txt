@@ -2,3 +2,4 @@ pymongo
 requests
 Flask
 flask_bcrypt
+flask_socketio

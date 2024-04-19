@@ -1,6 +1,6 @@
 from flask import Flask,send_file,render_template, request, jsonify, redirect, url_for, make_response
-from flask_bcrypt import Bcrypt
-from flask_bcrypt import check_password_hash
+from flask_bcrypt import Bcrypt, check_password_hash
+from flask_socketio import SocketIO, send, emit
 from pymongo import MongoClient
 import hashlib
 import uuid
@@ -8,12 +8,13 @@ import html
 import os
 
 app = Flask(__name__, template_folder='.')
+socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'])
 # Method=''
-
+active_users = {}
 # if Method=='local':
 #     mongo_client = MongoClient("mongodb+srv://Jaretl123:Jaretl123@cluster0.dpg3dfq.mongodb.net/")
 # else:
-mongo_client = MongoClient("mongo")
+mongo_client = MongoClient("mongodb://mongodb:27017/")
 
 IMAGE_SIGNATURES = {
     b'\xFF\xD8\xFF': 'jpg',   # JPEG/JFIF
@@ -70,6 +71,30 @@ bcrypt = Bcrypt()
 def add_header(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
+
+@socketio.on('connect')
+def handle_connect():
+    auth_token = request.args.get('auth_token')
+    username = request.args.get('username')
+    if auth_token:
+        token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
+        user_data = Tokens.find_one({"token_hash": token_hash})
+        if user_data:
+            active_users[request.sid] = username
+        else:
+            active_users[request.sid] = "Guest"
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    if request.sid in active_users:
+        del active_users[request.sid]
+
+@socketio.on('create_comment')
+def handle_message(data):
+    if request.sid in active_users:
+        username = active_users[request.sid]
+        message = data.get('message')
+        emit('create_comment', {'username': username, 'message': message}, broadcast=True)
 
 @app.route("/")
 def HomePage():
@@ -149,10 +174,7 @@ def ServeSabresChatroom():
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
                      'coments': comments}
-    print("rendering template")
     return render_template('chatroom.html', data=chatroom_data)
-
-
 
 @app.route('/img/<path:filename>')
 def serve_image(filename):
@@ -239,12 +261,11 @@ def logout():
     response.set_cookie('auth_token', '', expires=0)
     return response
 
-@app.route('/create_comment', methods=['POST'])
-def create_comment():
-    destination = request.form.get('destination')
-
-    content = html.escape(request.form.get('comment'))
-    author = "Guest"  
+@socketio.on('create_comment')
+def create_comment(data):
+    destination = data.get('destination')
+    content = html.escape(data.get('comment'))
+    author = "Guest"
     auth_token = request.cookies.get('auth_token')
     if auth_token:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
@@ -269,7 +290,6 @@ def create_comment():
                 "comment_id": get_next_id(),
                 "likes": []
             }
-            Comments.insert_one(new_comment)
         else:
             return "Invalid file format", 400
     else:
@@ -279,42 +299,41 @@ def create_comment():
             "comment_id": get_next_id(),
             "likes": []
         }
-        if destination=="General":
-            Comments.insert_one(new_comment)
-            return redirect(url_for('HomePage', username=author))
+    # Insert the comment into the appropriate collection based on the destination
+    if destination == "General":
+        Comments.insert_one(new_comment)
+        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
+    elif destination == "Bills":
+        BillsComments.insert_one(new_comment)
+        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
+    elif destination == "Sabres":
+        SabresComments.insert_one(new_comment)
+        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
 
-        elif destination=="Bills":
-            BillsComments.insert_one(new_comment)
-            return redirect(url_for('ServeBillsChatroom', username=author))
+@socketio.on('get_comments')
+def handle_get_comments(request):
+    destination = request.get('destination')
+    if destination == "General" or destination == "Comments":
+        comments = Comments.find()
+    elif destination == "Bills":
+        comments = BillsComments.find()
+    elif destination == "Sabres":
+        comments = SabresComments.find()
+    else:
+        # Handle invalid destination parameter
+        return jsonify({'error': 'Invalid destination parameter'})
 
-        elif destination=="Sabres":
-            SabresComments.insert_one(new_comment)
-            return redirect(url_for('ServeSabresChatroom', username=author))
+    comments_list = []
+    for comment in comments:
+        comment['_id'] = str(comment['_id'])
 
-@app.route('/like_comment', methods=['POST'])
-def like_comment():
-    comment_id = request.form.get('comment_id')
-    auth_token = request.cookies.get('auth_token')
-    if not auth_token:
-        error_message = "Only authenticated users can like posts"
-        return jsonify({'error': error_message}), 400
-    token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
-    user_data = Tokens.find_one({"token_hash": token_hash})
-    if not user_data:
-        error_message = "Only authenticated users can like posts"
-        return jsonify({'error': error_message}), 400
-    username = user_data.get('username')
-    post = Comments.find_one({"comment_id": int(comment_id)})
-    if post is None:
-        error_message = "Comment not found"
-        return jsonify({'error': error_message}), 404 
-    if username in post.get('likes', []):
-        error_message = "User has already liked post"
-        return jsonify({'error': error_message}), 400
-    Comments.update_one({"comment_id": int(comment_id)}, {"$push": {"likes": username}})
-    updated_post = Comments.find_one({"comment_id": int(comment_id)})
-    likes_count = len(updated_post.get('likes', []))
-    return jsonify({'likes_count': likes_count})
+        user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
+        if user_data and 'profile_file' in user_data:
+            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50" ">'
+            comment['profile_pic'] = profile_img_html
+        comments_list.append(comment)
+        
+    emit('get_comments', {'comments': comments_list})
 
 def get_next_id():
     document = ID.find_one()
@@ -331,12 +350,12 @@ def get_next_media_id():
 @app.route('/get_comments')
 def get_comments():
     destination = request.args.get('destination')
-    if destination=="General" or destination=="Comments":
-        comments = Comments.find()
-    elif destination=="Bills":
-        comments=BillsComments.find()
-    elif destination=="Sabres":
-        comments=SabresComments.find()
+    if destination=="Bills":
+        comments=BillsComments.find({})
+    if destination=="Sabres":
+        comments=SabresComments.find({})
+    else:
+        comments = Comments.find({})
     comments_list = []
     for comment in comments:
         comment['_id'] = str(comment['_id'])
@@ -360,8 +379,6 @@ def upload_profile_picture():
     if not user_data:
         error_message = "Only authenticated users can upload profile pictures"
         return jsonify({'error': error_message}), 400
-    print(request)
-    print(request.files)
     if 'upload' not in request.files:
         return 'No image uploaded', 400
     image_file = request.files['upload']
@@ -380,4 +397,4 @@ def upload_profile_picture():
     return response
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    socketio.run(app, host="0.0.0.0", port=8080, debug=True, allow_unsafe_werkzeug=True)
