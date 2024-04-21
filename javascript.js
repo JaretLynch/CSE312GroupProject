@@ -7,7 +7,7 @@ $(document).ready(function() {
     var name = $('#Name').text();
     // Function to establish WebSocket connection
     function connectWebSocket() {
-        socket = io('ws://localhost:8080', { transports: ['websocket'], upgrade: false });
+        socket = io('wss://localhost:8080', { transports: ['websocket'], upgrade: false });
     
         // WebSocket event listeners
         socket.on('connect', function() {
