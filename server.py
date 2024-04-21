@@ -310,9 +310,9 @@ def create_comment(data):
         SabresComments.insert_one(new_comment)
         emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
 
-@socketio.on('get_comments')
-def handle_get_comments(request):
-    destination = request.get('destination')
+@app.route('/get_comments')
+def handle_get_comments():
+    destination = request.args.get('destination')
     if destination == "General" or destination == "Comments":
         comments = Comments.find()
     elif destination == "Bills":
@@ -321,7 +321,7 @@ def handle_get_comments(request):
         comments = SabresComments.find()
     else:
         # Handle invalid destination parameter
-        return jsonify({'error': 'Invalid destination parameter'})
+        return jsonify({'error': 'Invalid destination parameter'}), 400
 
     comments_list = []
     for comment in comments:
@@ -332,8 +332,7 @@ def handle_get_comments(request):
             profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50" ">'
             comment['profile_pic'] = profile_img_html
         comments_list.append(comment)
-        
-    emit('get_comments', {'comments': comments_list})
+    return jsonify({'success': True, 'comments': comments_list})
 
 def get_next_id():
     document = ID.find_one()
