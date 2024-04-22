@@ -26,16 +26,22 @@
         <div class="Chat-forums">
             <div>
                 <form action="/" method="GET">
+                    <input type="hidden" name="username" value="{{ data.username }}">
+
                     <button type="submit">HomePage </button>
                 </form>
             </div>
             <div>
                 <form action="/Sabres" method="GET">
+                    <input type="hidden" name="username" value="{{ data.username }}">
+
                     <button type="submit">Sabres </button>
                 </form>
             </div>
             <div>
                 <form action="/General" method="GET">
+                    <input type="hidden" name="username" value="{{ data.username }}">
+
                     <button type="submit">General </button>
                 </form>
             </div>
