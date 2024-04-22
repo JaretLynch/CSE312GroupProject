@@ -141,7 +141,7 @@ def ServeBillsChatroom():
 
 @app.route("/General")
 def ServeGeneralChatroom():
-    comments=list(Comments.find)
+    comments=list(Comments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
     if auth_token:
