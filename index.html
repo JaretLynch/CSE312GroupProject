@@ -29,17 +29,23 @@
         <div id="error-message"></div>
         <div class="Chat-forums">
             <div>
-                <form action="/Bills" method="GET">
+                <form action="/Bills" method="GET" >
+                    <input type="hidden" name="username" value="{{ username }}">
+
                     <button type="submit">Bills </button>
                 </form>
             </div>
             <div >
                 <form action="/Sabres" method="GET">
+                    <input type="hidden" name="username" value="{{ username }}">
+
                     <button type="submit">Sabres </button>
                 </form>
             </div>
             <div >
                 <form action="/General" method="GET">
+                    <input type="hidden" name="username" value="{{ username }}">
+
                     <button type="submit">General </button>
                 </form>
             </div>
@@ -76,12 +82,12 @@
     </div>
 
     <div class="Coment-Forms">
-        <form id="comment-form">
+        <!-- <form id="comment-form">
             <input type="hidden" name="destination" value="General">
             <label for="comment">Type your comment:</label><br>
             <input type="text" id="comment" name="comment">
             <button id="send-comment">Send</button>
-        </form>
+        </form> -->
 
         <form action="/upload-profile" id="image-form" method="post" enctype="multipart/form-data">
             <br/>
@@ -91,11 +97,10 @@
         </form>
     </div>
 
-    <h2 class="Blocked-Header" id="Name">Comments</h2>
-    <div id="comments">
+    <!-- <h2 class="Blocked-Header" id="Name">Comments</h2> -->
+    <!-- <div id="comments">
 
 
-        <!-- Existing comments will be displayed here -->
         {% for comment in comments %}
         <div class="comment">
             <strong>{{ comment.author }}</strong>: {{ comment.content }}
@@ -104,7 +109,7 @@
             <span class="likes-count">Likes: {{ comment.likes|length }}</span>
         </div>
         {% endfor %}
-    </div>
+    </div> -->
 
 
 
