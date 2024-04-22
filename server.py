@@ -9,9 +9,9 @@ import os
 import ssl
 
 app = Flask(__name__, template_folder='.')
-context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-context.load_cert_chain('/etc/letsencrypt/live/yourdomain.com/fullchain.pem', '/etc/letsencrypt/live/yourdomain.com/privkey.pem') #Replace with domain when it is obtained
-socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'], ssl_context=context)
+#context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+#context.load_cert_chain('/etc/letsencrypt/live/yourdomain.com/fullchain.pem', '/etc/letsencrypt/live/yourdomain.com/privkey.pem') #Replace with domain when it is obtained
+socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'])
 active_users = {}
 mongo_client = MongoClient("mongodb+srv://Jaretl123:Jaretl123@cluster0.dpg3dfq.mongodb.net/")
 
