@@ -8,7 +8,7 @@ $(document).ready(function() {
     function connectWebSocket(dest) {
 
         console.log("calling connect websocket")
-        socket = io('ws://localhost:8080', 
+        socket = io('wss://localhost:8080', 
         { transports: ['websocket'], 
         upgrade: false, 
         query: {
