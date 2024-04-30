@@ -58,6 +58,10 @@ $(document).ready(function() {
             commentElement.append('<span class="likes-count"> Likes: ' + comment.likes + '</span>'+'<br>');
 
         });
+        socket.on('connect_error', function(error) {
+            console.error('WebSocket connection error:', error);
+        });
+        
     }
     
     // Function to close WebSocket connection
@@ -94,7 +98,12 @@ $(document).ready(function() {
     var dest = $('#Name').text();
     console.log("dest is ")
     console.log(dest)
-    connectWebSocket(dest);
+    if (dest === "Bills" || dest === "Sabres" || dest === "General") {
+        connectWebSocket(dest);
+    }
+    else{
+        connectWebSocket("False")
+    }
     // Detect page unload or refresh
     window.addEventListener('beforeunload', function(event) {
         // Close the WebSocket connection
