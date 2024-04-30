@@ -73,27 +73,47 @@ def add_header(response):
 
 @socketio.on('connect')
 def handle_connect():
-    auth_token = request.args.get('auth_token')
+    print("COnnected")
+    print(request.args)
+    auth_token = request.cookies.get('auth_token')
+
     username = request.args.get('username')
+    print(auth_token)
+    dest=request.args.get('dest')
+    print(dest)
     if auth_token:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_data = Tokens.find_one({"token_hash": token_hash})
         if user_data:
-            active_users[request.sid] = username
+            active_users[request.sid] = [user_data.get('username'),dest]
+            print(active_users)
         else:
-            active_users[request.sid] = "Guest"
+            active_users[request.sid] = ["Guest",dest]
+            print(active_users)
+            
+    else:
+        active_users[request.sid] = ["Guest",dest]
+        print(active_users)
 
 @socketio.on('disconnect')
 def handle_disconnect():
     if request.sid in active_users:
         del active_users[request.sid]
 
-@socketio.on('create_comment')
-def handle_message(data):
-    if request.sid in active_users:
-        username = active_users[request.sid]
-        message = data.get('message')
-        emit('create_comment', {'username': username, 'message': message}, broadcast=True)
+# @socketio.on('create_comment')
+# def handle_message(data):
+#     print("CreatingComment")
+#     if request.sid in active_users:
+#         username = active_users[request.sid][0]
+#         UsersCurrentChatroom=active_users[request.sid][1]
+#         message = data.get('message')
+#         destination=data.get('destination')
+#         print(UsersCurrentChatroom)
+#         print(destination)
+#         if UsersCurrentChatroom==destination:
+#             emit('Comment_Broadcasted', {'username': username, 'message': message}, broadcast=True)
+
+
 
 @app.route("/")
 def HomePage():
@@ -109,6 +129,10 @@ def HomePage():
             pass
         else:
             username = "Guest"
+    if hasattr(request, 'sid'):
+        sid=request.sid
+        if sid in active_users:     
+            active_users[request.sid][1]=""
     return render_template('index.html', username=username, error=error_message, comments=comments)
 
 @app.route("/javascript.js")
@@ -121,6 +145,12 @@ def ServeCSS():
 
 @app.route("/Bills")
 def ServeBillsChatroom():
+    if hasattr(request, 'sid'):
+        sid=request.sid
+        if sid in active_users:
+            active_users[request.sid][1]="Bills"
+
+    print("Bills chatroom served")
     comments=list(BillsComments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
@@ -134,13 +164,17 @@ def ServeBillsChatroom():
     chatroom_data = {'Name': 'Bills',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
-                     'coments': comments}
-
+                     'comments': comments}
 
     return render_template('chatroom.html', data=chatroom_data)
 
 @app.route("/General")
 def ServeGeneralChatroom():
+    if hasattr(request, 'sid'):
+        sid=request.sid
+        if sid in active_users:
+            active_users[request.sid][1]="General"
+
     comments=list(Comments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
@@ -154,11 +188,16 @@ def ServeGeneralChatroom():
     chatroom_data = {'Name': 'General',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
-                     'coments': comments}
+                     'comments': comments}
     return render_template('chatroom.html', data=chatroom_data)
 
 @app.route("/Sabres")
 def ServeSabresChatroom():
+    if hasattr(request, 'sid'):
+        sid=request.sid
+        if sid in active_users:
+            active_users[request.sid][1]="Sabres"
+
     comments=list(SabresComments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
@@ -172,7 +211,7 @@ def ServeSabresChatroom():
     chatroom_data = {'Name': 'Sabres',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
-                     'coments': comments}
+                     'comments': comments}
     return render_template('chatroom.html', data=chatroom_data)
 
 @app.route('/img/<path:filename>')
@@ -301,14 +340,24 @@ def create_comment(data):
     # Insert the comment into the appropriate collection based on the destination
     if destination == "General":
         Comments.insert_one(new_comment)
-        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
+        # emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
     elif destination == "Bills":
         BillsComments.insert_one(new_comment)
-        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
+        # emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
     elif destination == "Sabres":
         SabresComments.insert_one(new_comment)
-        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
-
+        # emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
+    if hasattr(request, 'sid'):
+        print("Has Attribute")
+        sid = request.sid
+        print(active_users)
+        if sid in active_users:
+            message = data.get('message')
+            for user_sid, (user_username, user_chatroom) in active_users.items():
+                print("User is "+str(user_username)+"and they are in the "+str(user_chatroom)+" Chatroom")
+                print("Destination is"+str(destination))
+                if user_chatroom == destination:
+                    emit('Comment_Broadcasted', {'author': author, 'content': content,'comment_id':new_comment.get('comment_id'),'likes':"0"}, room=user_sid)
 @app.route('/get_comments')
 def handle_get_comments():
     destination = request.args.get('destination')
