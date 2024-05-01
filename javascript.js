@@ -3,12 +3,23 @@ function welcome(){
 }
 
 $(document).ready(function() {
-    console.log("Document: ", document)
     var name = $('#Name').text();
-    // Function to establish WebSocket connection
+    var username = "{{ data.username }}";
     function connectWebSocket() {
-        socket = io('wss://localhost:8080', { transports: ['websocket'], upgrade: false });
-    
+        // Get the paragraph element by its ID
+        var usernameEntry = document.getElementById("usernameEntry");
+
+        // Extract the username from the paragraph's text content
+        var username = usernameEntry.textContent.replace("Logged in as: ", "");
+        console.log("Username:", username)
+        const socket = io('wss://localhost', { 
+            transports: ['websocket'], 
+            upgrade: false,
+            query: {
+                username: username,
+                room: name,
+            }
+        });
         // WebSocket event listeners
         socket.on('connect', function() {
             console.log('WebSocket connected');
@@ -17,6 +28,32 @@ $(document).ready(function() {
     
         socket.on('disconnect', function() {
             console.log('WebSocket disconnected');
+        });
+
+        socket.on('user_joined', function() {
+            socket.emit('get_user_list', {'room': name, 'username': username});
+        });
+
+        socket.on('user_left', function(){
+            socket.emit('get_user_list', {'room': name, 'username': username});
+        });
+
+        socket.on('user_list', function(data) {
+            var activeUsers = data.user_list;
+            console.log("Active users: ", activeUsers)
+            $('#userlist').empty();
+            activeUsers.forEach(function(user) {
+                var userElement = $('<div class="user"></div>');
+                // Calculate the duration in minutes and seconds
+                var minutes = Math.floor(user[1] / 60);
+                var seconds = user[1] % 60;
+                // Format the duration string
+                var durationString = minutes + " minutes " + seconds + " seconds";
+                // Append the username and duration to the user element
+                userElement.append('<strong>' + user[0] + '</strong>');
+                userElement.append('<span> Active for ' + durationString + '</span>');
+                $('#userlist').append(userElement);
+            });
         });
 
         $('#send-comment').click(function (event) {
@@ -33,7 +70,13 @@ $(document).ready(function() {
             $('#comment').val(''); // Clear the input field
             fetchCommentsAndUpdate(name);
         })
-    }
+        
+    
+        // Periodically request updated active users list
+        setInterval(function() {
+            socket.emit('get_user_list', {room: name});
+        }, 1000);
+        }
     // Function to close WebSocket connection
     function disconnectWebSocket() {
         if (socket) {
@@ -70,7 +113,6 @@ $(document).ready(function() {
 
     // Detect page unload or refresh
     window.addEventListener('beforeunload', function(event) {
-        // Close the WebSocket connection
         disconnectWebSocket();
     });
 });

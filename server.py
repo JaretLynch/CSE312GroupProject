@@ -7,6 +7,7 @@ import uuid
 import html
 import os
 import ssl
+from datetime import datetime, timedelta
 
 app = Flask(__name__, template_folder='.')
 #context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -24,6 +25,8 @@ IMAGE_SIGNATURES = {
 VIDEO_SIGNATURES = {
     b'\x00\x00\x00\x18ftypmp4': 'mp4'    # MP4
 }
+
+user_list = {'Bills': {}, 'General': {}, 'Sabres': {}}
 
 def validate_image_signature(signature):
     for magic_number, image_type in IMAGE_SIGNATURES.items():
@@ -73,20 +76,24 @@ def add_header(response):
 
 @socketio.on('connect')
 def handle_connect():
-    auth_token = request.args.get('auth_token')
     username = request.args.get('username')
-    if auth_token:
-        token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
-        user_data = Tokens.find_one({"token_hash": token_hash})
-        if user_data:
-            active_users[request.sid] = username
-        else:
-            active_users[request.sid] = "Guest"
+    if username != 'Guest':
+        active_users[request.sid] = username
+        room = request.args.get('room')
+        if room == "Bills" or room == "Sabres" or room == "General":
+            user_list[room][username] = datetime.now()
+            emit('user_joined', {'room': room}, broadcast=True)
 
 @socketio.on('disconnect')
 def handle_disconnect():
     if request.sid in active_users:
+        print("Request is in there")
+        username = active_users.get(request.sid, "Guest")
         del active_users[request.sid]
+        if username != "Guest":
+            for room, users_in_room in user_list.items():
+                users_in_room.pop(username, None)
+                emit('user_left', {'room': room}, broadcast=True)
 
 @socketio.on('create_comment')
 def handle_message(data):
@@ -99,16 +106,17 @@ def handle_message(data):
 def HomePage():
     error_message = request.args.get('error')
     username = request.args.get('username')
-    app.logger.info("Accessing home page")
     comments = list(Comments.find())
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     return render_template('index.html', username=username, error=error_message, comments=comments)
 
 @app.route("/javascript.js")
@@ -124,56 +132,63 @@ def ServeBillsChatroom():
     comments=list(BillsComments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     chatroom_data = {'Name': 'Bills',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
                      'coments': comments}
 
 
-    return render_template('chatroom.html', data=chatroom_data)
+    return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route("/General")
 def ServeGeneralChatroom():
     comments=list(Comments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     chatroom_data = {'Name': 'General',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
                      'coments': comments}
-    return render_template('chatroom.html', data=chatroom_data)
+    return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route("/Sabres")
 def ServeSabresChatroom():
     comments=list(SabresComments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username != "Guest":
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
+        print(user_token)
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     chatroom_data = {'Name': 'Sabres',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
                      'coments': comments}
-    return render_template('chatroom.html', data=chatroom_data)
+    return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route('/img/<path:filename>')
 def serve_image(filename):
@@ -233,7 +248,7 @@ def login():
     if check_password_hash(stored_password, password):
         token = generate_auth_token(username)
         response = redirect(url_for('HomePage', username=username)) 
-        response.set_cookie('auth_token', token, httponly=True, max_age=3600)
+        response.set_cookie('auth_token', token, httponly=True, max_age=3600, secure=True)
         return response, 302
     else:
         error_message = 'Invalid username and password combination'
@@ -345,26 +360,6 @@ def get_next_media_id():
     media_id.update_one({}, {"$set": {"value": current_value + 1}})
     return current_value
 
-@app.route('/get_comments')
-def get_comments():
-    destination = request.args.get('destination')
-    if destination=="Bills":
-        comments=BillsComments.find({})
-    if destination=="Sabres":
-        comments=SabresComments.find({})
-    else:
-        comments = Comments.find({})
-    comments_list = []
-    for comment in comments:
-        comment['_id'] = str(comment['_id'])
-
-        user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
-        if user_data and 'profile_file' in user_data:
-            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50" ">'
-            comment['profile_pic'] = profile_img_html
-        comments_list.append(comment)
-    return jsonify({'comments': comments_list})
-
 #Adds profile data to user's database entry to use as img source
 @app.route('/upload-profile', methods=['POST'])
 def upload_profile_picture():
@@ -393,6 +388,16 @@ def upload_profile_picture():
     user_data = Users.update_one({"username": username}, {"$set": {"profile_file": f"/img/{image_filename}"}})
     response = redirect(url_for('HomePage', username=username))
     return response
+
+def get_user_list(room):
+    now = datetime.now()
+    return [(user, (now - entry_time).seconds) for user, entry_time in user_list[room].items()]
+
+@socketio.on('get_user_list')
+def send_user_list(data):
+    room = data['room']
+    user_list = get_user_list(room)
+    emit('user_list', {'user_list': user_list, 'room': room})
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080, debug=True, allow_unsafe_werkzeug=True)

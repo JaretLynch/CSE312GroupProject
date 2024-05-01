@@ -17,12 +17,6 @@
         <div class="image_div">
             <img src="{{ data.image }}" width="200" height="150" />
         </div>
-
-        <h1 class="Welcome-Message">Welcome</h1>
-        {% if data.username %}
-        <p>Logged in as: {{ data.username }}</p>
-        {% endif %}
-
         <div class="Chat-forums">
             <div>
                 <form action="/" method="GET">
@@ -47,6 +41,13 @@
             </div>
         </div>
 
+        <h1 class="Welcome-Message">Welcome</h1>
+        {% if data.username %}
+        <p id="usernameEntry">Logged in as: {{ data.username }}</p>
+        {% endif %}<br>
+        <h2>Online Users in Chatroom:</h2>
+        <div id = "userlist">
+        </div><br>
         <div class="Coment-Forms">
 
             <form id="comment-form">
@@ -58,8 +59,8 @@
 
         </div>
     </div>
+    
     <h2 class="Blocked-Header">{{ data.Name }}</h2>
-
     <div id="comments">
 
         {% for comment in data.comments %}
@@ -80,7 +81,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="/javascript.js"></script>
+    <script src="/javascript.js"></script> 
 
 </body>
 
