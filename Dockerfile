@@ -45,6 +45,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 COPY . .
 
 # Expose the port that the application listens on.
-EXPOSE 9091
+EXPOSE 9090
 # Run the application.
 CMD python -u server.py
