@@ -7,6 +7,7 @@ import uuid
 import html
 import os
 import ssl
+from datetime import datetime, timedelta
 
 app = Flask(__name__, template_folder='.')
 #context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -65,7 +66,7 @@ xsrf=db["XSRF"]
 ID = db["id"]
 media_id = db["media_id"]
 bcrypt = Bcrypt()
-
+user_list = {'Bills': {}, 'General': {}, 'Sabres': {}}
 @app.after_request
 def add_header(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -73,8 +74,17 @@ def add_header(response):
 
 @socketio.on('connect')
 def handle_connect():
-    print("COnnected")
-    print(request.args)
+    username = request.args.get('username')
+    print(username)
+    if username != 'Guest':
+        active_users[request.sid] = username
+        room = request.args.get('room')
+        print(room)
+        if room == "Bills" or room == "Sabres" or room == "General":
+            user_list[room][username] = datetime.now()
+            emit('user_joined', {'room': room}, broadcast=True)
+    # print("COnnected")
+    # print(request.args)
     auth_token = request.cookies.get('auth_token')
 
     username = request.args.get('username')
@@ -98,7 +108,17 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     if request.sid in active_users:
+        print("Request is in there")
+        username = active_users.get(request.sid, "Guest")
         del active_users[request.sid]
+        if username != "Guest":
+            for room, users_in_room in user_list.items():
+                print("****USERNAME IS ***** "+str(username))
+                users_in_room.pop(username[0], None)
+                emit('user_left', {'room': room}, broadcast=True)
+    # if request.sid in active_users:
+    #     del active_users[request.sid]
+
 
 # @socketio.on('create_comment')
 # def handle_message(data):
@@ -122,13 +142,15 @@ def HomePage():
     app.logger.info("Accessing home page")
     comments = list(Comments.find())
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     if hasattr(request, 'sid'):
         sid=request.sid
         if sid in active_users:     
@@ -154,19 +176,21 @@ def ServeBillsChatroom():
     comments=list(BillsComments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username="Guest"
     chatroom_data = {'Name': 'Bills',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
                      'comments': comments}
 
-    return render_template('chatroom.html', data=chatroom_data)
+    return render_template('chatroom.html',username=username, data=chatroom_data)
 
 @app.route("/General")
 def ServeGeneralChatroom():
@@ -178,18 +202,20 @@ def ServeGeneralChatroom():
     comments=list(Comments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username= "Guest"
     chatroom_data = {'Name': 'General',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
                      'comments': comments}
-    return render_template('chatroom.html', data=chatroom_data)
+    return render_template('chatroom.html',username=username,data=chatroom_data)
 
 @app.route("/Sabres")
 def ServeSabresChatroom():
@@ -201,18 +227,20 @@ def ServeSabresChatroom():
     comments=list(SabresComments.find())
     username = request.args.get('username')
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     chatroom_data = {'Name': 'Sabres',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
                      'comments': comments}
-    return render_template('chatroom.html', data=chatroom_data)
+    return render_template('chatroom.html', username=username,data=chatroom_data)
 
 @app.route('/img/<path:filename>')
 def serve_image(filename):
@@ -272,7 +300,8 @@ def login():
     if check_password_hash(stored_password, password):
         token = generate_auth_token(username)
         response = redirect(url_for('HomePage', username=username)) 
-        response.set_cookie('auth_token', token, httponly=True, max_age=3600)
+
+        response.set_cookie('auth_token', token, httponly=True, max_age=3600, secure=True)        
         return response, 302
     else:
         error_message = 'Invalid username and password combination'
@@ -442,6 +471,19 @@ def upload_profile_picture():
     user_data = Users.update_one({"username": username}, {"$set": {"profile_file": f"/img/{image_filename}"}})
     response = redirect(url_for('HomePage', username=username))
     return response
+
+
+def get_user_list(room):
+    print(room)
+    print(user_list)
+    now = datetime.now()
+    return [(user, (now - entry_time).seconds) for user, entry_time in user_list[room].items()]
+
+@socketio.on('get_user_list')
+def send_user_list(data):
+    room = data['room']
+    user_list = get_user_list(room)
+    emit('user_list', {'user_list': user_list, 'room': room})
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080, debug=True, allow_unsafe_werkzeug=True)
