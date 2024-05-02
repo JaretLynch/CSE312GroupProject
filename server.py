@@ -486,4 +486,4 @@ def send_user_list(data):
     emit('user_list', {'user_list': user_list, 'room': room})
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=8080, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=9090, debug=True, allow_unsafe_werkzeug=True)
