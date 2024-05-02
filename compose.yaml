@@ -12,7 +12,7 @@ services:
   server:
     build: .
     ports:
-      - '8080:8080'
+      - '9090:9091'
     environment:
       WAIT_HOSTS: mongodb:27017
     depends_on:
