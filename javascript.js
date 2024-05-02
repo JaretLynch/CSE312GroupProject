@@ -16,7 +16,7 @@ $(document).ready(function() {
 
         console.log("Username:", username)
         console.log("calling connect websocket")
-        socket = io('ws://localhost:8080', 
+        socket = io('wss://localhost', 
         { transports: ['websocket'], 
         upgrade: false, 
         query: {
