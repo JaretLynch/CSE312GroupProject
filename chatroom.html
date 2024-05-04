@@ -20,7 +20,7 @@
 
         <h1 class="Welcome-Message">Welcome</h1>
         {% if data.username %}
-        <p>Logged in as: {{ data.username }}</p>
+        <p id="usernameEntry">Logged in as: {{ data.username }}</p>
         {% endif %}
 
         <div class="Chat-forums">
@@ -46,6 +46,9 @@
                 </form>
             </div>
         </div>
+        <h2>Online Users in Chatroom:</h2>
+        <div id = "userlist">
+        </div><br>
 
         <div class="Coment-Forms">
 
@@ -55,6 +58,7 @@
                 <input type="text" id="comment" name="comment">
                 <button id="send-comment">Send</button>
             </form>
+            <p id="messagesent"></p>
 
         </div>
     </div>

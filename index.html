@@ -24,7 +24,9 @@
             <p>Logged in as: {{ username }}</p>
             {% endif %}
         <h2>Error Message</h2>
-
+            {% if error_message %}
+            <p>Error: {{ error_message }}</p>
+            {% endif %}
 
         <div id="error-message"></div>
         <div class="Chat-forums">
@@ -62,13 +64,17 @@
                 <input type="password" id="password2" name="password2" required><br>
                 <input type="submit" value="Register">
             </form>
+            {% if regsuccess == "Yes"%}
+            <p>Account successfully registered, please login with the inputted username and password.</p>
+            {% endif %}
+            {% if regfailure == "Yes" %}
+            <p>Account failed to register, please ensure all guidelines are followed.</p>
+            {% endif %}
             <h2>Login Form</h2>
             <form id="loginForm" action="/login" method="POST">
                 <label for="username">Username:</label><br>
                 <input type="text" id="username" name="username" required><br><br>
 
-                <label for="password">Password:</label><br>
-                <input type="password" id="password" name="password" required><br><br>
                 <label for="password">Password:</label><br>
                 <input type="password" id="password" name="password" required><br><br>
 

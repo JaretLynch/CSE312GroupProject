@@ -1,21 +1,22 @@
 
 
 $(document).ready(function() {
-
+    var dest = $('#Name').text();
+    console.log("Dest: ", dest)
     console.log("Document: ", document)
-    // var name = $('#Name').text();
     // Function to establish WebSocket connection
     function connectWebSocket(dest) {
-
-        console.log("calling connect websocket")
+        var usernameEntry = document.getElementById("usernameEntry");
+        var username = usernameEntry.textContent.replace("Logged in as: ", "");
+        console.log("Username:", username)
         socket = io('ws://localhost:8080', 
         { transports: ['websocket'], 
         upgrade: false, 
         query: {
-            dest: dest
+            dest: dest,
+            username: username
             }
         });
-        console.log("after calling connect websocket")
     
         // WebSocket event listeners
         socket.on('connect', function() {
@@ -33,7 +34,7 @@ $(document).ready(function() {
             console.log(name)
 
             event.preventDefault(); // Prevent the default form submission
-            
+            document.getElementById('messagesent').innerText = ""
             // Get the comment content and destination from the input fields
             var content = $('#comment').val();
             var destination = $('#destination').val();
@@ -45,23 +46,54 @@ $(document).ready(function() {
             $('#comment').val(''); // Clear the input field
             // fetchCommentsAndUpdate(destination);
         })
+        // Event listener for like buttons
+        $(document).on('click', '.like-btn', function() {
+            // Get the comment ID from the data attribute
+            var commentId = $(this).data('comment-id');
+            socket.emit('like_comment', { "id": commentId, "destination": dest})
+        });
 
-        socket.on('Comment_Broadcasted', function(comment) {
-            console.log("CommentBroadcasted")
-            // Extract the username and message from the received data
-            commentElement=$('#comments')
-
-            // Update the comments section with the new comment
-            commentElement.append('<strong>' + comment.author + '</strong>: ' + comment.content);
-            commentElement.append('<br><span class="comment-id"> ID: ' + comment.comment_id + ' </span>');
-            commentElement.append('<button class="like-btn" data-comment-id="' + comment.comment_id + '">Like</button>');
-            commentElement.append('<span class="likes-count"> Likes: ' + comment.likes + '</span>'+'<br>');
-
+        socket.on('Comment_Broadcasted', function() {
+            console.log("CommentBroadcasted");
+            fetchCommentsAndUpdate(dest)
+        });
+        socket.on('filter_triggered', function() {
+            document.getElementById('messagesent').innerText = "Your comment was not submitted due to containing a banned word."
+        });
+        socket.on('user_joined', function() {
+            socket.emit('get_user_list', {'dest': dest, 'username': username});
+        });
+        socket.on('user_left', function(){
+            socket.emit('get_user_list', {'dest': dest, 'username': username});
+        });
+        socket.on('Comment_Liked', function() {
+            console.log("CommentLiked");
+            fetchCommentsAndUpdate(dest)
         });
         socket.on('connect_error', function(error) {
             console.error('WebSocket connection error:', error);
         });
-        
+        socket.on('user_list', function(data) {
+            var activeUsers = data.user_list;
+            console.log("Active users: ", activeUsers)
+            $('#userlist').empty();
+            activeUsers.forEach(function(user) {
+                var userElement = $('<div class="user"></div>');
+                // Calculate the duration in minutes and seconds
+                var minutes = Math.floor(user[1] / 60);
+                var seconds = user[1] % 60;
+                // Format the duration string
+                var durationString = minutes + " minutes " + seconds + " seconds";
+                // Append the username and duration to the user element
+                userElement.append('<strong>' + user[0] + '</strong>');
+                userElement.append('<span> Active for ' + durationString + '</span>');
+                $('#userlist').append(userElement);
+            });
+        });
+        // Periodically request updated active users list
+        setInterval(function() {
+            socket.emit('get_user_list', {dest: dest});
+        }, 1000);
     }
     
     // Function to close WebSocket connection
@@ -95,9 +127,6 @@ $(document).ready(function() {
             });
         });
     }
-    var dest = $('#Name').text();
-    console.log("dest is ")
-    console.log(dest)
     if (dest === "Bills" || dest === "Sabres" || dest === "General") {
         connectWebSocket(dest);
     }
