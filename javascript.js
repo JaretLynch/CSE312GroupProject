@@ -28,6 +28,32 @@ $(document).ready(function() {
             console.log('WebSocket disconnected');
         });
 
+        socket.on('user_joined', function() {
+            socket.emit('get_user_list', {'room': name, 'username': username});
+        });
+
+        socket.on('user_left', function(){
+            socket.emit('get_user_list', {'room': name, 'username': username});
+        });
+
+        socket.on('user_list', function(data) {
+            var activeUsers = data.user_list;
+            console.log("Active users: ", activeUsers)
+            $('#userlist').empty();
+            activeUsers.forEach(function(user) {
+                var userElement = $('<div class="user"></div>');
+                // Calculate the duration in minutes and seconds
+                var minutes = Math.floor(user[1] / 60);
+                var seconds = user[1] % 60;
+                // Format the duration string
+                var durationString = minutes + " minutes " + seconds + " seconds";
+                // Append the username and duration to the user element
+                userElement.append('<strong>' + user[0] + '</strong>');
+                userElement.append('<span> Active for ' + durationString + '</span>');
+                $('#userlist').append(userElement);
+            });
+        });
+
         $('#send-comment').click(function (event) {
             console.log("sending comment")
             var name = $('#destination').text();
@@ -46,6 +72,7 @@ $(document).ready(function() {
             $('#comment').val(''); // Clear the input field
             // fetchCommentsAndUpdate(destination);
         })
+
         // Event listener for like buttons
         $(document).on('click', '.like-btn', function() {
             // Get the comment ID from the data attribute
@@ -112,7 +139,7 @@ $(document).ready(function() {
             startSocketEmit();
         }
     }
-    
+
     // Function to close WebSocket connection
     function disconnectWebSocket() {
         if (socket) {
@@ -153,7 +180,6 @@ $(document).ready(function() {
     }
     // Detect page unload or refresh
     window.addEventListener('beforeunload', function(event) {
-        // Close the WebSocket connection
         disconnectWebSocket();
     });
 });

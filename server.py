@@ -122,7 +122,7 @@ def HomePage():
     app.logger.info("Accessing home page")
     comments = list(Comments.find())
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
@@ -133,7 +133,7 @@ def HomePage():
         sid=request.sid
         if sid in active_users:     
             active_users[request.sid]=""
-    return render_template('index.html', username=username, error=error_message, comments=comments, regfailure=regfailure, regsuccess=regsuccess)
+    return render_template('index.html', username=username, error=error_message, regfailure=regfailure, regsuccess=regsuccess)
 
 @app.route("/javascript.js")
 def ServeJS():
@@ -148,55 +148,61 @@ def ServeBillsChatroom():
     comments=list(BillsComments.find())
     username = request.args.get('username', "Guest")
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     chatroom_data = {'Name': 'Bills',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
                      'comments': comments}
 
-    return render_template('chatroom.html', data=chatroom_data)
+    return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route("/General")
 def ServeGeneralChatroom():
     comments=list(Comments.find())
     username = request.args.get('username', "Guest")
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     chatroom_data = {'Name': 'General',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
-                     'comments': comments}
-    return render_template('chatroom.html', data=chatroom_data)
+    return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route("/Sabres")
 def ServeSabresChatroom():
     comments=list(SabresComments.find())
     username = request.args.get('username', "Guest")
     auth_token = request.cookies.get('auth_token')
-    if auth_token:
+    if auth_token and username != "Guest":
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
+        print(user_token)
         if user_token and user_token['username'] == username:
             pass
         else:
             username = "Guest"
+    else:
+        username = "Guest"
     chatroom_data = {'Name': 'Sabres',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
-                     'comments': comments}
-    return render_template('chatroom.html', data=chatroom_data)
+                     'coments': comments}
+    return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route('/img/<path:filename>')
 def serve_image(filename):
@@ -259,7 +265,7 @@ def login():
     if check_password_hash(stored_password, password):
         token = generate_auth_token(username)
         response = redirect(url_for('HomePage', username=username)) 
-        response.set_cookie('auth_token', token, httponly=True, max_age=3600)
+        response.set_cookie('auth_token', token, httponly=True, max_age=3600, secure=True)
         return response, 302
     else:
         error_message = 'Invalid username and password combination'
@@ -428,6 +434,16 @@ def send_user_list(data):
     dest = data['dest']
     user_lists = get_user_list(dest)
     emit('user_list', {'user_list': user_lists, 'dest': dest})
+=======
+def get_user_list(room):
+    now = datetime.now()
+    return [(user, (now - entry_time).seconds) for user, entry_time in user_list[room].items()]
+
+@socketio.on('get_user_list')
+def send_user_list(data):
+    room = data['room']
+    user_list = get_user_list(room)
+    emit('user_list', {'user_list': user_list, 'room': room})
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080, ssl_context=context)
