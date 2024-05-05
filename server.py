@@ -180,7 +180,7 @@ def ServeGeneralChatroom():
         username = "Guest"
     chatroom_data = {'Name': 'General',
                      'username':username,
-                     'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
+                     'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD', 'comments': comments}
     return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route("/Sabres")
@@ -382,7 +382,7 @@ def get_comments():
     destination = request.args.get('destination')
     if destination=="Bills":
         comments=BillsComments.find({})
-    if destination=="Sabres":
+    elif destination=="Sabres":
         comments=SabresComments.find({})
     else:
         comments = Comments.find({})
@@ -434,7 +434,7 @@ def send_user_list(data):
     dest = data['dest']
     user_lists = get_user_list(dest)
     emit('user_list', {'user_list': user_lists, 'dest': dest})
-=======
+    
 def get_user_list(room):
     now = datetime.now()
     return [(user, (now - entry_time).seconds) for user, entry_time in user_list[room].items()]
