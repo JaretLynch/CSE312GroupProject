@@ -1,5 +1,5 @@
 
-
+var intervalId;
 $(document).ready(function() {
     var dest = $('#Name').text();
     console.log("Dest: ", dest)
@@ -9,7 +9,7 @@ $(document).ready(function() {
         var usernameEntry = document.getElementById("usernameEntry");
         var username = usernameEntry.textContent.replace("Logged in as: ", "");
         console.log("Username:", username)
-        socket = io('ws://localhost:8080', 
+        socket = io('wss://localhost:8080', 
         { transports: ['websocket'], 
         upgrade: false, 
         query: {
@@ -90,10 +90,27 @@ $(document).ready(function() {
                 $('#userlist').append(userElement);
             });
         });
-        // Periodically request updated active users list
-        setInterval(function() {
-            socket.emit('get_user_list', {dest: dest});
-        }, 1000);
+        function startSocketEmit() {
+            intervalId = setInterval(function() {
+                if (!document.hidden) {
+                    socket.emit('get_user_list', {dest: dest});
+                }
+            }, 1000);
+        }
+        function stopSocketEmit() {
+            clearInterval(intervalId);
+        }
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopSocketEmit();
+            } else {
+                startSocketEmit();
+            }
+        });
+        // Start emitting when the page is initially loaded and visible
+        if (!document.hidden) {
+            startSocketEmit();
+        }
     }
     
     // Function to close WebSocket connection
@@ -129,6 +146,7 @@ $(document).ready(function() {
     }
     if (dest === "Bills" || dest === "Sabres" || dest === "General") {
         connectWebSocket(dest);
+        fetchCommentsAndUpdate(dest);
     }
     else{
         connectWebSocket("False")

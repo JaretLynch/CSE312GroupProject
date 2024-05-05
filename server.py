@@ -8,12 +8,14 @@ import html
 import os
 import ssl
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
+from collections import defaultdict
+import time
 
 app = Flask(__name__, template_folder='.')
-#context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-#context.load_cert_chain('/etc/letsencrypt/live/yourdomain.com/fullchain.pem', '/etc/letsencrypt/live/yourdomain.com/privkey.pem') #Replace with domain when it is obtained
-socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'])
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context.load_cert_chain('/app/nginx/fullchain.pem', '/app/nginx/privkey.pem')
+socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'], ssl_context=context)
 active_users = {}
 mongo_client = MongoClient("mongodb+srv://Jaretl123:Jaretl123@cluster0.dpg3dfq.mongodb.net/")
 
@@ -71,6 +73,19 @@ ID = db["id"]
 media_id = db["media_id"]
 bcrypt = Bcrypt()
 
+request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
+
+@app.before_request
+def limit_requests():
+    ip_address = request.remote_addr
+    current_time = time.time()
+    if request_counts[ip_address]['blocked_until'] < current_time:
+        request_counts[ip_address]['count'] = 0
+    request_counts[ip_address]['count'] += 1
+    if request_counts[ip_address]['count'] > 50:
+        request_counts[ip_address]['blocked_until'] = current_time + 30
+        return jsonify({'error': 'Too many requests. Please try again later.'}), 429
+    
 @app.after_request
 def add_header(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -97,20 +112,6 @@ def handle_disconnect():
             for room, users_in_room in user_list.items():
                 users_in_room.pop(username, None)
                 emit('user_left', {'room': room}, broadcast=True)
-# @socketio.on('create_comment')
-# def handle_message(data):
-#     print("CreatingComment")
-#     if request.sid in active_users:
-#         username = active_users[request.sid][0]
-#         UsersCurrentChatroom=active_users[request.sid][1]
-#         message = data.get('message')
-#         destination=data.get('destination')
-#         print(UsersCurrentChatroom)
-#         print(destination)
-#         if UsersCurrentChatroom==destination:
-#             emit('Comment_Broadcasted', {'username': username, 'message': message}, broadcast=True)
-
-
 
 @app.route("/")
 def HomePage():
@@ -429,4 +430,4 @@ def send_user_list(data):
     emit('user_list', {'user_list': user_lists, 'dest': dest})
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=8080, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=8080, ssl_context=context)

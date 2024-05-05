@@ -14,7 +14,6 @@
 
         <div class="image_div">
             <img src="https://people.com/thmb/02xfdPvkpJ-dnSTO62uTB936JGE=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():focal(979x265:981x267)/josh-allen-buffalo-bills-120122-53e3b5e302e74e019091fbe87af68d8a.jpg"  width="200" height="150"/>
-            <img src="https://people.com/thmb/02xfdPvkpJ-dnSTO62uTB936JGE=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc():focal(979x265:981x267)/josh-allen-buffalo-bills-120122-53e3b5e302e74e019091fbe87af68d8a.jpg"  width="200" height="150"/>
         </div>
         
         <h1 class="Welcome-Message">Welcome</h1>
@@ -55,7 +54,7 @@
         <div class="User-Creation-forms">
 
             <h2>Registration Form</h2>
-            <form action="http://localhost:8080/register" method="post">
+            <form action="/register" method="POST">
                 <label for="username">Username:</label><br>
                 <input type="text" id="username" name="username" required><br>
                 <label for="password1">Password:</label><br>
@@ -88,13 +87,6 @@
     </div>
 
     <div class="Coment-Forms">
-        <!-- <form id="comment-form">
-            <input type="hidden" name="destination" value="General">
-            <label for="comment">Type your comment:</label><br>
-            <input type="text" id="comment" name="comment">
-            <button id="send-comment">Send</button>
-        </form> -->
-
         <form action="/upload-profile" id="image-form" method="post" enctype="multipart/form-data">
             <br/>
             <label for="form-file">Change profile picture: </label>
@@ -102,23 +94,6 @@
             <input type="submit" value="Post">
         </form>
     </div>
-
-    <!-- <h2 class="Blocked-Header" id="Name">Comments</h2> -->
-    <!-- <div id="comments">
-
-
-        {% for comment in comments %}
-        <div class="comment">
-            <strong>{{ comment.author }}</strong>: {{ comment.content }}
-            <span class="comment-id">ID: {{ comment.comment_id }}</span>
-            <button class="like-btn" data-comment-id="{{ comment.comment_id }}">Like</button>
-            <span class="likes-count">Likes: {{ comment.likes|length }}</span>
-        </div>
-        {% endfor %}
-    </div> -->
-
-
-
 
     {% if success_message %}
     <div class="success-message">
