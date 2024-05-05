@@ -7,12 +7,15 @@ import uuid
 import html
 import os
 import ssl
-from datetime import datetime, timedelta
+import re
+from datetime import datetime
+from collections import defaultdict
+import time
 
 app = Flask(__name__, template_folder='.')
-#context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-#context.load_cert_chain('/etc/letsencrypt/live/yourdomain.com/fullchain.pem', '/etc/letsencrypt/live/yourdomain.com/privkey.pem') #Replace with domain when it is obtained
-socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'])
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context.load_cert_chain('/app/nginx/fullchain.pem', '/app/nginx/privkey.pem')
+socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'], ssl_context=context)
 active_users = {}
 mongo_client = MongoClient("mongodb+srv://Jaretl123:Jaretl123@cluster0.dpg3dfq.mongodb.net/")
 
@@ -26,6 +29,7 @@ VIDEO_SIGNATURES = {
     b'\x00\x00\x00\x18ftypmp4': 'mp4'    # MP4
 }
 
+filter = {"dingus"}
 user_list = {'Bills': {}, 'General': {}, 'Sabres': {}}
 
 def validate_image_signature(signature):
@@ -69,6 +73,19 @@ ID = db["id"]
 media_id = db["media_id"]
 bcrypt = Bcrypt()
 
+request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
+
+@app.before_request
+def limit_requests():
+    ip_address = request.remote_addr
+    current_time = time.time()
+    if request_counts[ip_address]['blocked_until'] < current_time:
+        request_counts[ip_address]['count'] = 0
+    request_counts[ip_address]['count'] += 1
+    if request_counts[ip_address]['count'] > 50:
+        request_counts[ip_address]['blocked_until'] = current_time + 30
+        return jsonify({'error': 'Too many requests. Please try again later.'}), 429
+    
 @app.after_request
 def add_header(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -77,17 +94,18 @@ def add_header(response):
 @socketio.on('connect')
 def handle_connect():
     username = request.args.get('username')
+    dest = request.args.get('dest')
     if username != 'Guest':
         active_users[request.sid] = username
-        room = request.args.get('room')
-        if room == "Bills" or room == "Sabres" or room == "General":
-            user_list[room][username] = datetime.now()
-            emit('user_joined', {'room': room}, broadcast=True)
+        if dest == "Bills" or dest == "Sabres" or dest == "General":
+            user_list[dest][username] = datetime.now()
+            emit('user_joined', {'dest': dest}, broadcast=True)
+    else:
+        active_users[request.sid] = "Guest"
 
 @socketio.on('disconnect')
 def handle_disconnect():
     if request.sid in active_users:
-        print("Request is in there")
         username = active_users.get(request.sid, "Guest")
         del active_users[request.sid]
         if username != "Guest":
@@ -95,17 +113,13 @@ def handle_disconnect():
                 users_in_room.pop(username, None)
                 emit('user_left', {'room': room}, broadcast=True)
 
-@socketio.on('create_comment')
-def handle_message(data):
-    if request.sid in active_users:
-        username = active_users[request.sid]
-        message = data.get('message')
-        emit('create_comment', {'username': username, 'message': message}, broadcast=True)
-
 @app.route("/")
 def HomePage():
     error_message = request.args.get('error')
-    username = request.args.get('username')
+    username = request.args.get('username', "Guest")
+    regfailure = request.args.get('regfailure')
+    regsuccess = request.args.get('regsuccess')
+    app.logger.info("Accessing home page")
     comments = list(Comments.find())
     auth_token = request.cookies.get('auth_token')
     if auth_token and username:
@@ -115,9 +129,11 @@ def HomePage():
             pass
         else:
             username = "Guest"
-    else:
-        username = "Guest"
-    return render_template('index.html', username=username, error=error_message, comments=comments)
+    if hasattr(request, 'sid'):
+        sid=request.sid
+        if sid in active_users:     
+            active_users[request.sid]=""
+    return render_template('index.html', username=username, error=error_message, regfailure=regfailure, regsuccess=regsuccess)
 
 @app.route("/javascript.js")
 def ServeJS():
@@ -130,7 +146,7 @@ def ServeCSS():
 @app.route("/Bills")
 def ServeBillsChatroom():
     comments=list(BillsComments.find())
-    username = request.args.get('username')
+    username = request.args.get('username', "Guest")
     auth_token = request.cookies.get('auth_token')
     if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
@@ -144,15 +160,14 @@ def ServeBillsChatroom():
     chatroom_data = {'Name': 'Bills',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
-                     'coments': comments}
-
+                     'comments': comments}
 
     return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route("/General")
 def ServeGeneralChatroom():
     comments=list(Comments.find())
-    username = request.args.get('username')
+    username = request.args.get('username', "Guest")
     auth_token = request.cookies.get('auth_token')
     if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
@@ -166,13 +181,12 @@ def ServeGeneralChatroom():
     chatroom_data = {'Name': 'General',
                      'username':username,
                      'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
-                     'coments': comments}
     return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route("/Sabres")
 def ServeSabresChatroom():
     comments=list(SabresComments.find())
-    username = request.args.get('username')
+    username = request.args.get('username', "Guest")
     auth_token = request.cookies.get('auth_token')
     if auth_token and username != "Guest":
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
@@ -215,19 +229,22 @@ def serve_image(filename):
 @app.route('/register', methods=['POST'])
 def register():
     username = request.form.get('username')
+    if any(re.search(re.escape(word), username, re.IGNORECASE) for word in filter):
+        error_message = 'Username cannot be used due to containing a banned word.'
+        return redirect(url_for('HomePage', username="Guest", error=error_message, regfailure = "Yes"))
     password1 = request.form.get('password1')
     password2 = request.form.get('password2')
     username_exists = get_username(username)
     if username_exists:
         error_message = 'Username already exists.'
-        return redirect(url_for('HomePage', error=error_message, username="Guest"))
+        return redirect(url_for('HomePage', error=error_message, username="Guest", regfailure = "Yes"))
     if password1 != password2:
         error_message = 'Passwords do not match.'
-        return redirect(url_for('HomePage', error=error_message, username="Guest"))
+        return redirect(url_for('HomePage', error=error_message, username="Guest"), regfailure = "Yes")
     hashed_password = bcrypt.generate_password_hash(password1)
     user_data = {"username": username, "password": hashed_password}
     Users.insert_one(user_data)
-    return redirect(url_for('HomePage', username="Guest"))
+    return redirect(url_for('HomePage', username="Guest", regsuccess = "Yes"))
 
 def get_username(username):
     user_document = Users.find_one({"username": username})
@@ -279,6 +296,9 @@ def logout():
 def create_comment(data):
     destination = data.get('destination')
     content = html.escape(data.get('comment'))
+    if any(re.search(re.escape(word), content, re.IGNORECASE) for word in filter):
+        emit('filter_triggered')
+        return
     author = "Guest"
     auth_token = request.cookies.get('auth_token')
     if auth_token:
@@ -316,37 +336,34 @@ def create_comment(data):
     # Insert the comment into the appropriate collection based on the destination
     if destination == "General":
         Comments.insert_one(new_comment)
-        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
     elif destination == "Bills":
         BillsComments.insert_one(new_comment)
-        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
     elif destination == "Sabres":
         SabresComments.insert_one(new_comment)
-        emit('comment_created', {'message': 'Your comment has been posted successfully!', 'destination': destination}, broadcast=True)
+    emit('Comment_Broadcasted', broadcast=True)
 
-@app.route('/get_comments')
-def handle_get_comments():
-    destination = request.args.get('destination')
-    if destination == "General" or destination == "Comments":
-        comments = Comments.find()
-    elif destination == "Bills":
-        comments = BillsComments.find()
-    elif destination == "Sabres":
-        comments = SabresComments.find()
+@socketio.on('like_comment')
+def like_comment(data):
+    dest = data.get('destination')
+    if dest == "Bills":
+        comment = BillsComments.find_one({"comment_id": data.get("id")})
+        likes_list = comment.get("likes")
+        username = active_users[request.sid]
+        if username != "Guest" and username not in likes_list:
+            BillsComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+    elif dest == "Sabres":
+        comment = SabresComments.find_one({"comment_id": data.get("id")})
+        likes_list = comment.get("likes")
+        username = active_users[request.sid]
+        if username != "Guest" and username not in likes_list:
+            SabresComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
     else:
-        # Handle invalid destination parameter
-        return jsonify({'error': 'Invalid destination parameter'}), 400
-
-    comments_list = []
-    for comment in comments:
-        comment['_id'] = str(comment['_id'])
-
-        user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
-        if user_data and 'profile_file' in user_data:
-            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50" ">'
-            comment['profile_pic'] = profile_img_html
-        comments_list.append(comment)
-    return jsonify({'success': True, 'comments': comments_list})
+        comment = Comments.find_one({"comment_id": data.get("id")})
+        likes_list = comment.get("likes")
+        username = active_users[request.sid]
+        if username != "Guest" and username not in likes_list:
+            Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+    emit('Comment_Liked')
 
 def get_next_id():
     document = ID.find_one()
@@ -359,6 +376,25 @@ def get_next_media_id():
     current_value = document.get('value', 0)
     media_id.update_one({}, {"$set": {"value": current_value + 1}})
     return current_value
+
+@app.route('/get_comments')
+def get_comments():
+    destination = request.args.get('destination')
+    if destination=="Bills":
+        comments=BillsComments.find({})
+    if destination=="Sabres":
+        comments=SabresComments.find({})
+    else:
+        comments = Comments.find({})
+    comments_list = []
+    for comment in comments:
+        comment['_id'] = str(comment['_id'])
+        user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
+        if user_data and 'profile_file' in user_data:
+            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50" ">'
+            comment['profile_pic'] = profile_img_html
+        comments_list.append(comment)
+    return jsonify({'comments': comments_list})
 
 #Adds profile data to user's database entry to use as img source
 @app.route('/upload-profile', methods=['POST'])
@@ -389,6 +425,16 @@ def upload_profile_picture():
     response = redirect(url_for('HomePage', username=username))
     return response
 
+def get_user_list(dest):
+    now = datetime.now()
+    return [(user, (now - entry_time).seconds) for user, entry_time in user_list[dest].items()]
+
+@socketio.on('get_user_list')
+def send_user_list(data):
+    dest = data['dest']
+    user_lists = get_user_list(dest)
+    emit('user_list', {'user_list': user_lists, 'dest': dest})
+=======
 def get_user_list(room):
     now = datetime.now()
     return [(user, (now - entry_time).seconds) for user, entry_time in user_list[room].items()]
@@ -400,4 +446,4 @@ def send_user_list(data):
     emit('user_list', {'user_list': user_list, 'room': room})
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=8080, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=8080, ssl_context=context)

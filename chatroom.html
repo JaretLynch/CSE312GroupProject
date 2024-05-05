@@ -17,6 +17,12 @@
         <div class="image_div">
             <img src="{{ data.image }}" width="200" height="150" />
         </div>
+
+        <h1 class="Welcome-Message">Welcome</h1>
+        {% if data.username %}
+        <p id="usernameEntry">Logged in as: {{ data.username }}</p>
+        {% endif %}
+
         <div class="Chat-forums">
             <div>
                 <form action="/" method="GET">
@@ -40,6 +46,9 @@
                 </form>
             </div>
         </div>
+        <h2>Online Users in Chatroom:</h2>
+        <div id = "userlist">
+        </div><br>
 
         <h1 class="Welcome-Message">Welcome</h1>
         {% if data.username %}
@@ -56,6 +65,7 @@
                 <input type="text" id="comment" name="comment">
                 <button id="send-comment">Send</button>
             </form>
+            <p id="messagesent"></p>
 
         </div>
     </div>
@@ -65,7 +75,7 @@
 
         {% for comment in data.comments %}
         <div class="comment">
-            <strong>{{ comment.author }}</strong>: {{ comment.content }}
+            <strong>{{ comment.author }}</strong>: {{ comment.content }}<br>
             <span class="comment-id">ID: {{ comment.comment_id }}</span>
             <button class="like-btn" data-comment-id="{{ comment.comment_id }}">Like</button>
             <span class="likes-count">Likes: {{ comment.likes|length }}</span>

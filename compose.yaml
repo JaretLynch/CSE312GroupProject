@@ -1,14 +1,13 @@
 version: '3.8'
 
 services:
-  # nginx:
-  #   build: ./nginx
-  #   ports:
-  #    - '80:80'
-  #    - '443:443'
+  nginx:
+    build: ./nginx
+    ports:
+      - '80:80'
+      - '443:443'
   mongodb:
     image: mongo:4.2.5
-
   server:
     build: .
     ports:
@@ -17,6 +16,9 @@ services:
       WAIT_HOSTS: mongodb:27017
     depends_on:
       - mongodb
+    volumes:
+      - media_volume:/app/img
 
 volumes:
   mongodb_data:
+  media_volume:
