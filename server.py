@@ -135,12 +135,12 @@ def block_ip():
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["50 per 10 seconds"],
+    default_limits=["10 per 10 seconds"],
     on_breach=block_ip
 )
 
 @app.before_request
-@limiter.limit('50 per 10 seconds')
+@limiter.limit('10 per 10 seconds')
 def Before():
     ip = get_remote_address()
     blocked_ip = blocked_ips.find_one({"IP": ip})
