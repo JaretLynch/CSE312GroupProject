@@ -82,7 +82,7 @@ blocked_ips = {}
 
 limiter = Limiter(
     app,
-    key_func=get_remote_address,
+    key_func=get_remote_address(),
     default_limits=["50 per 10 seconds"]
 )
 @app.before_request
