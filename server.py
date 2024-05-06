@@ -107,23 +107,45 @@ def add_header(response):
 @socketio.on('connect')
 def handle_connect():
     username = request.args.get('username')
-    dest = request.args.get('dest')
+    print(username)
     if username != 'Guest':
         active_users[request.sid] = username
-        if dest == "Bills" or dest == "Sabres" or dest == "General":
-            user_list[dest][username] = datetime.now()
-            emit('user_joined', {'dest': dest}, broadcast=True)
+        room = request.args.get('room')
+        print(room)
+        if room == "Bills" or room == "Sabres" or room == "General":
+            user_list[room][username] = datetime.now()
+            emit('user_joined', {'room': room}, broadcast=True)
+
+    auth_token = request.cookies.get('auth_token')
+
+    username = request.args.get('username')
+    print(auth_token)
+    dest=request.args.get('dest')
+    print(dest)
+    if auth_token:
+        token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
+        user_data = Tokens.find_one({"token_hash": token_hash})
+        if user_data:
+            active_users[request.sid] = [user_data.get('username'),dest]
+            print(active_users)
+        else:
+            active_users[request.sid] = ["Guest",dest]
+            print(active_users)
+            
     else:
-        active_users[request.sid] = "Guest"
+        active_users[request.sid] = ["Guest",dest]
+        print(active_users)
 
 @socketio.on('disconnect')
 def handle_disconnect():
     if request.sid in active_users:
+        print("Request is in there")
         username = active_users.get(request.sid, "Guest")
         del active_users[request.sid]
         if username != "Guest":
             for room, users_in_room in user_list.items():
-                users_in_room.pop(username, None)
+                print("****USERNAME IS ***** "+str(username))
+                users_in_room.pop(username[0], None)
                 emit('user_left', {'room': room}, broadcast=True)
 
 @app.route("/")
@@ -353,30 +375,58 @@ def create_comment(data):
         BillsComments.insert_one(new_comment)
     elif destination == "Sabres":
         SabresComments.insert_one(new_comment)
-    emit('Comment_Broadcasted', broadcast=True)
+    if hasattr(request, 'sid'):
+        print("Has Attribute")
+        sid = request.sid
+        print(active_users)
+        if sid in active_users:
+            message = data.get('message')
+            for user_sid, (user_username, user_chatroom) in active_users.items():
+                print("User is "+str(user_username)+"and they are in the "+str(user_chatroom)+" Chatroom")
+                print("Destination is"+str(destination))
+                if user_chatroom == destination:
+                    emit('Comment_Broadcasted', {'author': author, 'content': content,'comment_id':new_comment.get('comment_id'),'likes':"0"}, room=user_sid)
 
 @socketio.on('like_comment')
 def like_comment(data):
     dest = data.get('destination')
+    id=data.get(id)
+    NumOfLikes = 120
     if dest == "Bills":
         comment = BillsComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
         username = active_users[request.sid]
         if username != "Guest" and username not in likes_list:
-            BillsComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            Result=BillsComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            NumOfLikes=len(Result.get("likes"))
     elif dest == "Sabres":
         comment = SabresComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
         username = active_users[request.sid]
         if username != "Guest" and username not in likes_list:
-            SabresComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            Result=SabresComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            NumOfLikes=len(Result.get("likes"))
+
     else:
         comment = Comments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
         username = active_users[request.sid]
         if username != "Guest" and username not in likes_list:
-            Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
-    emit('Comment_Liked')
+            Result=Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            NumOfLikes=len(Result.get("likes"))
+
+
+    if hasattr(request, 'sid'):
+        print("Has Attribute")
+        sid = request.sid
+        print(active_users)
+        if sid in active_users:
+            message = data.get('message')
+            for user_sid, (user_username, user_chatroom) in active_users.items():
+                print("User is "+str(user_username)+"and they are in the "+str(user_chatroom)+" Chatroom")
+                print("Destination is"+str(dest))
+                if user_chatroom == dest:
+                    emit('Comment_Liked', {'comment_id':id,"NumOfLikes":NumOfLikes}, room=user_sid)
 
 def get_next_id():
     document = ID.find_one()
@@ -446,8 +496,8 @@ def get_user_list(dest):
 def send_user_list(data):
     dest = data['dest']
     user_lists = get_user_list(dest)
-    emit('user_list', {'user_list': user_lists, 'dest': dest})
-    
+    filtered_user_lists = [(user, time) for user, time in user_lists if user != "Guest"]
+    emit('user_list', {'user_list': filtered_user_lists, 'dest': dest})
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080)
