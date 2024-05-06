@@ -397,23 +397,37 @@ def like_comment(data):
         comment = BillsComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
         username = active_users[request.sid]
-        if username != "Guest" and username not in likes_list:
+        if username in likes_list:
+            emit('like_alert')
+            return
+        elif  username != "Guest":
             Result=BillsComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            comment = SabresComments.find_one({"comment_id": data.get("id")})
             NumOfLikes=len(comment.get("likes"))
     elif dest == "Sabres":
         comment = SabresComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
         username = active_users[request.sid]
-        if username != "Guest" and username not in likes_list:
+        if username in likes_list:
+            emit('like_alert')
+            return
+        elif  username != "Guest":
             Result=SabresComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            comment = SabresComments.find_one({"comment_id": data.get("id")})
+
             NumOfLikes=len(comment.get("likes"))
 
     else:
         comment = Comments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
         username = active_users[request.sid]
-        if username != "Guest" and username not in likes_list:
+        if username in likes_list:
+            emit('like_alert')
+            return
+        elif  username != "Guest":
             Result=Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            comment = Comments.find_one({"comment_id": data.get("id")})
+
             NumOfLikes=len(comment.get("likes"))
 
 

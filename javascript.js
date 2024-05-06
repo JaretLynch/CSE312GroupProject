@@ -91,6 +91,9 @@ $(document).ready(function() {
         socket.on('filter_triggered', function() {
             document.getElementById('messagesent').innerText = "Your comment was not submitted due to containing a banned word."
         });
+        socket.on('like_alert', function() {
+            alert('You have already liked this comment.'); // Display an alert
+        });
         socket.on('Comment_Liked', function(comment) {
             console.log("CommentLiked");
             ID=comment.comment_id
