@@ -134,7 +134,6 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print("DISCONNECTION DETECTED")
     if request.sid in active_users:
         username = active_users[request.sid][0]
         room=active_users[request.sid][1]
@@ -153,12 +152,15 @@ def HomePage():
     app.logger.info("Accessing home page")
     comments = list(Comments.find())
     auth_token = request.cookies.get('auth_token')
+    print("Im here")
     if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
+            print("BUG")
             pass
         else:
+            print("Bug2")
             username = "Guest"
     return render_template('index.html', username=username, error=error_message, regfailure=regfailure, regsuccess=regsuccess)
 
@@ -270,6 +272,7 @@ def register():
     hashed_password = bcrypt.generate_password_hash(password1)
     user_data = {"username": username, "password": hashed_password}
     Users.insert_one(user_data)
+    print("PROPERLY REDIRECTING")
     return redirect(url_for('HomePage', username="Guest", regsuccess = "Yes"))
 
 def get_username(username):
