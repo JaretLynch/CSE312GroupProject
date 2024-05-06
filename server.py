@@ -110,9 +110,10 @@ def handle_connect():
     print(username)
     if username != 'Guest':
         active_users[request.sid] = username
-        room = request.args.get('room')
+        room = request.args.get('dest')
         print(room)
         if room == "Bills" or room == "Sabres" or room == "General":
+            print("Adding User to list")
             user_list[room][username] = datetime.now()
             emit('user_joined', {'room': room}, broadcast=True)
 
@@ -390,7 +391,7 @@ def create_comment(data):
 @socketio.on('like_comment')
 def like_comment(data):
     dest = data.get('destination')
-    id=data.get(id)
+    id=data.get("id")
     NumOfLikes = 120
     if dest == "Bills":
         comment = BillsComments.find_one({"comment_id": data.get("id")})
