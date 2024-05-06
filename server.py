@@ -500,7 +500,7 @@ def like_comment(data):
             emit('like_alert')
             return
         elif  username != "Guest":
-            Result=comment.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            Result=Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
             comment = Comments.find_one({"comment_id": data.get("id")})
 
             NumOfLikes=len(comment.get("likes"))
