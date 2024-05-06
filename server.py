@@ -146,6 +146,7 @@ def handle_disconnect():
 
 @app.route("/")
 def HomePage():
+    print("HOME")
     error_message = request.args.get('error')
     username = request.args.get('username', "Guest")
     regfailure = request.args.get('regfailure')
@@ -451,6 +452,8 @@ def get_next_media_id():
 
 @app.route('/get_comments')
 def get_comments():
+    print("HO123123ME")
+
     destination = request.args.get('destination')
     if destination=="Bills":
         comments=BillsComments.find({})
@@ -503,6 +506,8 @@ def get_user_list(dest):
 
 @socketio.on('get_user_list')
 def send_user_list(data):
+    print("123123123")
+
     dest = data['dest']
     user_lists = get_user_list(dest)
     filtered_user_lists = [(user, time) for user, time in user_lists if user != "Guest"]
