@@ -144,7 +144,7 @@ def block_ip():
 @app.after_request
 def add_header(response):
     ip = get_remote_address()
-    if limiter.hit or response.status_code == 429:
+    if limiter.limit or response.status_code == 429:
         expiry = datetime.now() + timedelta(seconds=30)
         blocked_ips.update_one({"IP": ip}, {"$set": {"expiry": expiry}}, upsert=True)
     response.headers['X-Content-Type-Options'] = 'nosniff'
