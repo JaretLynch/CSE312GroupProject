@@ -127,16 +127,22 @@ def get_user_list(destination):
         return user_list_document.get("UsersInChat", {})
     else:
         return {}
+def block_ip():
+    expiry = datetime.now() + timedelta(seconds=30)
+    ip=get_remote_address()
+    blocked_ips.update_one({"IP": ip}, {"$set": {"expiry": expiry}}, upsert=True)
 
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["50 per 10 seconds"]
+    default_limits=["50 per 10 seconds"],
+    on_breach=block_ip
 )
 
 @app.before_request
-@limiter.limit('10 per 10 seconds')
-def block_ip():
+@limiter.limit('50 per 10 seconds')
+def Before():
+
     ip = get_remote_address()
     blocked_ip = blocked_ips.find_one({"IP": ip})
 
@@ -144,13 +150,8 @@ def block_ip():
         return jsonify({"error": "Too Many Requests. Try again later."}), 429
 
 @app.after_request
-@limiter.limit('10 per 10 seconds')
+@limiter.limit('50 per 10 seconds')
 def add_header(response):
-    ip = get_remote_address()
-    if response.status_code == 429:
-        print("STATUS CODE")
-        expiry = datetime.now() + timedelta(seconds=30)
-        blocked_ips.update_one({"IP": ip}, {"$set": {"expiry": expiry}}, upsert=True)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
