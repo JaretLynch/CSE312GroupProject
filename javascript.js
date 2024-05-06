@@ -77,16 +77,27 @@ $(document).ready(function() {
             socket.emit('like_comment', { "id": commentId, "destination": dest})
         });
 
-        socket.on('Comment_Broadcasted', function() {
-            console.log("CommentBroadcasted");
-            fetchCommentsAndUpdate(dest)
+        socket.on('Comment_Broadcasted', function(comment) {
+            console.log("CommentBroadcasted")
+            // Extract the username and message from the received data
+            commentElement=$('#comments')
+
+            // Update the comments section with the new comment
+            commentElement.append('<strong>' + comment.author + '</strong>: ' + comment.content);
+            commentElement.append('<br><span class="comment-id"> ID: ' + comment.comment_id + ' </span>');
+            commentElement.append('<button class="like-btn" data-comment-id="' + comment.comment_id + '">Like</button>');
+            commentElement.append('<span class="likes-count" id="'+comment.comment_id+'"> Likes: ' + comment.likes + '</span>'+'<br>');
         });
         socket.on('filter_triggered', function() {
             document.getElementById('messagesent').innerText = "Your comment was not submitted due to containing a banned word."
         });
-        socket.on('Comment_Liked', function() {
+        socket.on('Comment_Liked', function(comment) {
             console.log("CommentLiked");
-            fetchCommentsAndUpdate(dest)
+            ID=comment.comment_id
+            NumOfLikes=comment.NumOfLikes
+            commentElement=document.getElementById(comment.commentId)
+            commentElement.innerHTML='<span class="likes-count" id="'+ID+'">Likes: '+NumOfLikes+'</span>'
+            // fetchCommentsAndUpdate(dest)
         });
         socket.on('connect_error', function(error) {
             console.error('WebSocket connection error:', error);
@@ -148,30 +159,30 @@ $(document).ready(function() {
 
     
     // Function to fetch comments and update comments section
-    function fetchCommentsAndUpdate(destination) {
-        $.get('/get_comments', { destination: destination }, function(data) {
-            // Clear existing comments
-            $('#comments').empty();
+    // function fetchCommentsAndUpdate(destination) {
+    //     $.get('/get_comments', { destination: destination }, function(data) {
+    //         // Clear existing comments
+    //         $('#comments').empty();
 
-            // Iterate over fetched comments and construct HTML elements
-            data.comments.forEach(function(comment) {
-                var commentElement = $('<div class="comment"></div>');
-                if (comment.profile_pic) {
-                    commentElement.append(comment.profile_pic);
-                }
-                commentElement.append('<strong>' + comment.author + '</strong>: ' + comment.content);
-                commentElement.append('<br><span class="comment-id"> ID: ' + comment.comment_id + ' </span>');
-                commentElement.append('<button class="like-btn" data-comment-id="' + comment.comment_id + '">Like</button>');
-                commentElement.append('<span class="likes-count"> Likes: ' + comment.likes.length + '</span>');
+    //         // Iterate over fetched comments and construct HTML elements
+    //         data.comments.forEach(function(comment) {
+    //             var commentElement = $('<div class="comment"></div>');
+    //             if (comment.profile_pic) {
+    //                 commentElement.append(comment.profile_pic);
+    //             }
+    //             commentElement.append('<strong>' + comment.author + '</strong>: ' + comment.content);
+    //             commentElement.append('<br><span class="comment-id"> ID: ' + comment.comment_id + ' </span>');
+    //             commentElement.append('<button class="like-btn" data-comment-id="' + comment.comment_id + '">Like</button>');
+    //             commentElement.append('<span class="likes-count"> Likes: ' + comment.likes.length + '</span>');
 
-                // Append comment element to comments section
-                $('#comments').append(commentElement);
-            });
-        });
-    }
+    //             // Append comment element to comments section
+    //             $('#comments').append(commentElement);
+    //         });
+    //     });
+    // }
     if (dest === "Bills" || dest === "Sabres" || dest === "General") {
         connectWebSocket(dest);
-        fetchCommentsAndUpdate(dest);
+        // fetchCommentsAndUpdate(dest);
     }
     else{
         connectWebSocket("False")
