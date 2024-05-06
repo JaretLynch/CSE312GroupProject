@@ -30,5 +30,5 @@ ENV GUNICORN_CMD_ARGS="--worker-class gevent --workers 4"
 EXPOSE 8080
 
 # Run the application.
-# CMD python -u server.py
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "server:app"]
+CMD python -u server.py
+# CMD ["gunicorn", "-b", "0.0.0.0:8080", "server:app"]
