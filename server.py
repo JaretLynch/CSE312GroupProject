@@ -187,8 +187,9 @@ def handle_disconnect():
         print("Balls")
         username = active_users[request.sid][0]
         room=active_users[request.sid][1]
-        del active_users[request.sid]
+        remove_active_user(request.sid)
         if username != "Guest":
+            UserList=get_user_list()
             if username in UserList[room]:
                 remove_user_from_list(room,username)
                 print("Emitting")
