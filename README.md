@@ -2,6 +2,7 @@ https://cse312theprogrammers.me/
 
 The newest version of the app is running from the master branch. To run locally, all mentions of the domain name must be changed to localhost or localhost:8080
 
+Please note, that for IP rate limiting, It seemed to not work unless we lowered the rate limit to 10 request per 10 seconds, rather than 5. I suspect this could be due to our decision to use gunicorn to diversify load management.
 Bonus Feature: Content Filter
 The site has a filter so that if a username is submitted for registration that contains a banned word, the user will be alerted and the account will not be registered
 In the same vein, sending a message that contains a banned word will alert the user and the message will not be submitted and shown to other users
