@@ -8,7 +8,7 @@ import html
 import os
 import ssl
 import re
-from datetime import datetime
+from datetime import datetime,timedelta
 from collections import defaultdict
 import time
 from flask import Flask, request, jsonify
@@ -74,6 +74,8 @@ if "UserList" not in db.list_collection_names():
         existing_record = db["UserList"].find_one({'destination': destination})
         if not existing_record:
             db["UserList"].insert_one({'destination': destination, 'UsersInChat': {}})
+if "BlockedIps" not in db.list_collection_names():
+    db.create_collection("BlockedIps") 
 
 Comments = db["Comments"]
 BillsComments=db["BillsComments"]
@@ -85,7 +87,7 @@ ID = db["id"]
 media_id = db["media_id"]
 UserList=db["UserList"]
 active_users=db["ActiveUsers"]
-
+blocked_ips=db["BlockedIps"]
 bcrypt = Bcrypt()
 
 def get_active_users():
@@ -132,21 +134,19 @@ limiter = Limiter(
     default_limits=["50 per 10 seconds"]
 )
 
-# @app.before_request
-# def block_ip():
-#     ip = get_remote_address()
-#     if ip in blocked_ips:
-#         if time() - blocked_ips[ip] < 30:
-#             return jsonify({"error": "Too Many Requests. Try again later."}), 429
-#         else:
-#             del blocked_ips[ip]
+@app.before_request
+def block_ip():
+    ip = get_remote_address()
+    blocked_ip = blocked_ips.find_one({"IP": ip})
+    if blocked_ip and blocked_ip["expiry"] > datetime.now():
+        return jsonify({"error": "Too Many Requests. Try again later."}), 429
 
-    
 @app.after_request
 def add_header(response):
     ip = get_remote_address()
-    # if limiter.hit or response.status_code == 429:
-    #     blocked_ips[ip] = time()
+    if limiter.hit or response.status_code == 429:
+        expiry = datetime.now() + timedelta(seconds=30)
+        blocked_ips.update_one({"IP": ip}, {"$set": {"expiry": expiry}}, upsert=True)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
