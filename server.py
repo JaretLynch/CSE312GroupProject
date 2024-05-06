@@ -127,10 +127,11 @@ def get_user_list(destination):
         return user_list_document.get("UsersInChat", {})
     else:
         return {}
-def block_ip():
+def block_ip(request):
     expiry = datetime.now() + timedelta(seconds=30)
     ip=get_remote_address()
     blocked_ips.update_one({"IP": ip}, {"$set": {"expiry": expiry}}, upsert=True)
+    print("BLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\n")
 
 limiter = Limiter(
     key_func=get_remote_address,
