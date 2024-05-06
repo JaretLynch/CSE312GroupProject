@@ -32,8 +32,8 @@ IMAGE_SIGNATURES = {
 VIDEO_SIGNATURES = {
     b'\x00\x00\x00\x18ftypmp4': 'mp4'    # MP4
 }
-
-filter = {"dingus"}
+from BannedWords import bannedPhrases
+filter = bannedPhrases
 
 def validate_image_signature(signature):
     for magic_number, image_type in IMAGE_SIGNATURES.items():
@@ -126,11 +126,11 @@ def get_user_list(destination):
     else:
         return {}
 
-# limiter = Limiter(
-#     key_func=get_remote_address,
-#     app=app,
-#     default_limits=["50 per 10 seconds"]
-# )
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["50 per 10 seconds"]
+)
 
 # @app.before_request
 # def block_ip():
