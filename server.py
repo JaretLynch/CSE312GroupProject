@@ -106,18 +106,14 @@ def add_header(response):
 
 @socketio.on('connect')
 def handle_connect():
+    auth_token = request.cookies.get('auth_token')
+    dest=request.args.get('dest')
     username = request.args.get('username')
     if username != 'Guest':
-        active_users[request.sid] = username
-        room = request.args.get('dest')
-        if room == "Bills" or room == "Sabres" or room == "General":
-            user_list[room][username] = datetime.now()
-            emit('user_joined', {'room': room}, broadcast=True)
+        if dest == "Bills" or dest == "Sabres" or dest == "General":
+            user_list[dest][username] = datetime.now()
+            emit('user_joined', {'room': dest}, broadcast=True)
 
-    auth_token = request.cookies.get('auth_token')
-
-    username = request.args.get('username')
-    dest=request.args.get('dest')
     if auth_token:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_data = Tokens.find_one({"token_hash": token_hash})
@@ -132,12 +128,13 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     if request.sid in active_users:
-        username = active_users.get(request.sid, "Guest")
+        username = active_users[request.sid][0]
+        room=active_users[request.sid][1]
         del active_users[request.sid]
         if username != "Guest":
-            for room, users_in_room in user_list.items():
-                users_in_room.pop(username[0], None)
-                emit('user_left', {'room': room}, broadcast=True)
+            if username in user_list[room]:
+                    del user_list[room][username]
+                    emit('user_left', {'room': room}, broadcast=True)
 
 @app.route("/")
 def HomePage():
@@ -369,6 +366,7 @@ def create_comment(data):
         sid = request.sid
         if sid in active_users:
             message = data.get('message')
+            print(active_users)
             for user_sid, (user_username, user_chatroom) in active_users.items():
                 if user_chatroom == destination:
                     print("EMITTING TO "+str(user_username))
