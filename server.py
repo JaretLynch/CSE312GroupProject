@@ -577,6 +577,7 @@ def send_user_list(data):
 
     dest = data['dest']
     user_lists = get_user_list(dest)
+    print(user_lists)
     filtered_user_lists = [(user, time) for user, time in user_lists if user != "Guest"]
     emit('user_list', {'user_list': filtered_user_lists, 'dest': dest})
 
