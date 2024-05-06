@@ -136,13 +136,15 @@ def handle_connect():
 def handle_disconnect():
     print("Handling disconnect")
     if request.sid in active_users:
+        print("Balls")
         username = active_users[request.sid][0]
         room=active_users[request.sid][1]
         del active_users[request.sid]
         if username != "Guest":
             if username in user_list[room]:
-                    del user_list[room][username]
-                    emit('user_left', {'room': room}, broadcast=True)
+                del user_list[room][username]
+                print("Emitting")
+                emit('user_left', {'room': room}, broadcast=True)
 
 @app.route("/")
 def HomePage():
