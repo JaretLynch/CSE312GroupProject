@@ -586,9 +586,9 @@ def send_user_list(data):
         users=[]
         print("User List Exists")
         print(user_list)
-        users_in_chat = user_list.get('UsersInChat', {})
-        for user, entry_time in users_in_chat.items():
+        for user, entry_time in user_list.items():
             users.append((user, entry_time))
+        print(users)
         emit('user_list', {'user_list': users, 'dest': dest})
     else:
         print("UserList Empty")
