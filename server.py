@@ -81,10 +81,11 @@ request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
 blocked_ips = {}
 
 limiter = Limiter(
-    app,
     key_func=get_remote_address,
+    app=app,
     default_limits=["50 per 10 seconds"]
 )
+
 @app.before_request
 def block_ip():
     ip = get_remote_address()
