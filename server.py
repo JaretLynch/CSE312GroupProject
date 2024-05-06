@@ -256,6 +256,7 @@ def serve_image(filename):
 
 @app.route('/register', methods=['POST'])
 def register():
+    print("at register")
     username = request.form.get('username')
     if any(re.search(re.escape(word), username, re.IGNORECASE) for word in filter):
         error_message = 'Username cannot be used due to containing a banned word.'
