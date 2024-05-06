@@ -71,7 +71,9 @@ if "ActiveUsers" not in db.list_collection_names():
 if "UserList" not in db.list_collection_names():
     db.create_collection("UserList")
     for destination in ['Bills', 'General', 'Sabres']:
-        db["UserList"].insert_one({'destination': destination, 'users': {}})
+        existing_record = db["UserList"].find_one({'destination': destination})
+        if not existing_record:
+            db["UserList"].insert_one({'destination': destination, 'UsersInChat': {}})
 
 Comments = db["Comments"]
 BillsComments=db["BillsComments"]
