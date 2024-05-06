@@ -106,6 +106,7 @@ def add_header(response):
 
 @socketio.on('connect')
 def handle_connect():
+    print("Incoming websocket connection and active_users is "+str(active_users))
     auth_token = request.cookies.get('auth_token')
     dest=request.args.get('dest')
     username = request.args.get('username')
@@ -159,10 +160,6 @@ def HomePage():
             pass
         else:
             username = "Guest"
-    if hasattr(request, 'sid'):
-        sid=request.sid
-        if sid in active_users:     
-            active_users[request.sid]=""
     return render_template('index.html', username=username, error=error_message, regfailure=regfailure, regsuccess=regsuccess)
 
 @app.route("/javascript.js")
