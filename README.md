@@ -1,3 +1,5 @@
+Please keep in mind that the entirety of this project was completed by two people
+
 https://cse312theprogrammers.me/
 
 The newest version of the app is running from the master branch. To run locally, all mentions of the domain name must be changed to localhost or localhost:8080
