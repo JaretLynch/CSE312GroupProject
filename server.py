@@ -404,7 +404,7 @@ def get_comments():
         comment['_id'] = str(comment['_id'])
         user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
         if user_data and 'profile_file' in user_data:
-            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic" width="50" height="50">'
+            profile_img_html = f'<img src="{user_data["profile_file"]}" width="50" height="50">'
             comment['profile_pic'] = profile_img_html
         comments_list.append(comment)
     return jsonify({'comments': comments_list})
