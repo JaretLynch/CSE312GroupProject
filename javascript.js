@@ -95,7 +95,8 @@ $(document).ready(function() {
             console.log("CommentLiked");
             ID=comment.comment_id
             NumOfLikes=comment.NumOfLikes
-            commentElement=document.getElementById(comment.commentId)
+            console.log("Comment ID Is",ID)
+            commentElement=document.getElementById(ID)
             commentElement.innerHTML='<span class="likes-count" id="'+ID+'">Likes: '+NumOfLikes+'</span>'
             // fetchCommentsAndUpdate(dest)
         });
@@ -105,10 +106,9 @@ $(document).ready(function() {
         socket.on('user_list', function(data) {
             var now = new Date(data.now);
             var entryTime = new Date(data.Entry_time);
-            // console.log("Now:", now);
-            // console.log("Entry Time:", entryTime);
+           
             var activeUsers = data.user_list;
-            // console.log("Active users: ", activeUsers)
+         
             $('#userlist').empty();
             activeUsers.forEach(function(user) {
                 var userElement = $('<div class="user"></div>');
