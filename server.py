@@ -186,6 +186,8 @@ def handle_disconnect():
     if request.sid in active_users:
         print("Balls")
         print(active_users)
+        print(request.sid)
+        print(active_users[request.sid])
         username = active_users[request.sid][1]["username"]
         room=active_users[request.sid][1]["destination"]
         remove_active_user(request.sid)
