@@ -70,6 +70,8 @@ if "ActiveUsers" not in db.list_collection_names():
     db.create_collection("ActiveUsers") 
 if "UserList" not in db.list_collection_names():
     db.create_collection("UserList")
+    for destination in ['Bills', 'General', 'Sabres']:
+        UserList.insert_one({'destination': destination, 'users': {}})
 
 Comments = db["Comments"]
 BillsComments=db["BillsComments"]
@@ -81,8 +83,7 @@ ID = db["id"]
 media_id = db["media_id"]
 UserList=db["UserList"]
 active_users=db["ActiveUsers"]
-for destination in ['Bills', 'General', 'Sabres']:
-    UserList.insert_one({'destination': destination, 'users': {}})
+
 bcrypt = Bcrypt()
 
 def get_active_users():
@@ -102,39 +103,26 @@ def remove_active_user(sid):
 
 def update_user_list(destination, username):
     user_list_collection = db["UserList"]
-    user_list = user_list_collection.find_one()
-    if user_list:
-        # Update existing entry for the destination if it exists
-        if destination in user_list:
-            users = user_list[destination]
-            users[username] = datetime.now()
-            user_list_collection.update_one({}, {'$set': {destination: users}})
-        else:
-            # Add a new entry for the destination
-            user_list_collection.update_one({}, {'$set': {destination: {username: datetime.now()}}})
-    else:
-        # If no entry exists, create a new one
-        user_list_collection.insert_one({destination: {username: datetime.now()}})
+    user_list_collection.update_one(
+        {"destination": destination},
+        {'$set': {f"UsersInChat.{username}": datetime.now()}},
+        upsert=True
+    )
 
 def remove_user_from_list(dest, username):
     user_list_collection = db["UserList"]
-    user_list_document = user_list_collection.find_one({'destination': dest})
+    user_list_collection.update_one(
+        {"destination": dest},
+        {'$unset': {f"UsersInChat.{username}": ""}}
+    )
 
-    if user_list_document and dest in user_list_document:
-        user_list = user_list_document[dest]
-        if username in user_list:
-            del user_list[username]
-            # Update the document in the collection after removing the user
-            user_list_collection.update_one({'destination': dest}, {'$set': {dest: user_list}})
 def get_user_list(destination):
     user_list_collection = db["UserList"]
-    user_list = user_list_collection.find_one({'destination': destination})
-    if user_list:
-        return user_list
+    user_list_document = user_list_collection.find_one({'destination': destination})
+    if user_list_document:
+        return user_list_document.get("UsersInChat", {})
     else:
         return {}
-request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
-blocked_ips = {}
 
 # limiter = Limiter(
 #     key_func=get_remote_address,
@@ -142,14 +130,14 @@ blocked_ips = {}
 #     default_limits=["50 per 10 seconds"]
 # )
 
-@app.before_request
-def block_ip():
-    ip = get_remote_address()
-    if ip in blocked_ips:
-        if time() - blocked_ips[ip] < 30:
-            return jsonify({"error": "Too Many Requests. Try again later."}), 429
-        else:
-            del blocked_ips[ip]
+# @app.before_request
+# def block_ip():
+#     ip = get_remote_address()
+#     if ip in blocked_ips:
+#         if time() - blocked_ips[ip] < 30:
+#             return jsonify({"error": "Too Many Requests. Try again later."}), 429
+#         else:
+#             del blocked_ips[ip]
 
     
 @app.after_request
@@ -573,13 +561,14 @@ def upload_profile_picture():
 
 @socketio.on('get_user_list')
 def send_user_list(data):
-    print("123123123")
-
     dest = data['dest']
-    user_lists = get_user_list(dest)
-    print(user_lists)
-    filtered_user_lists = [(user, time) for user, time in user_lists if user != "Guest"]
-    emit('user_list', {'user_list': filtered_user_lists, 'dest': dest})
+    user_list = get_user_list(dest)
+    if user_list:
+        users_in_chat = user_list.get('UsersInChat', {})
+        filtered_user_list = [(user, time) for user, time in users_in_chat.items() if user != "Guest"]
+        emit('user_list', {'user_list': filtered_user_list, 'dest': dest})
+    else:
+        emit('user_list', {'user_list': [], 'dest': dest})  
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080)
