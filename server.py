@@ -135,6 +135,7 @@ limiter = Limiter(
 )
 
 @app.before_request
+@limiter.limit('200 per 10 seconds')
 def block_ip():
     ip = get_remote_address()
     blocked_ip = blocked_ips.find_one({"IP": ip})
@@ -142,6 +143,8 @@ def block_ip():
         return jsonify({"error": "Too Many Requests. Try again later."}), 429
 
 @app.after_request
+@limiter.limit('200 per 10 seconds')
+
 def add_header(response):
     ip = get_remote_address()
     if limiter.limit or response.status_code == 429:
