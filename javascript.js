@@ -114,7 +114,10 @@ $(document).ready(function() {
                     console.log("Getting User List from Interval")
                     console.log("dest is ")
                     console.log(dest)
-                    socket.emit('get_user_list', {dest: dest});
+                    validRooms=["Bills","Sabres","General"]
+                    if (dest in validRooms){
+                        socket.emit('get_user_list', {dest: dest});
+                    }
                 }
             }, 1000);
         }
