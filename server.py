@@ -581,13 +581,13 @@ def upload_profile_picture():
 def send_user_list(data):
     dest = data['dest']
     user_list = get_user_list(dest)
-    
+    now = datetime.now()
     if user_list:
         users=[]
         print("User List Exists")
         print(user_list)
         for user, entry_time in user_list.items():
-            users.append((user, entry_time))
+            users.append((user, (now-entry_time).seconds))
         print(users)
         emit('user_list', {'user_list': users, 'dest': dest})
     else:
