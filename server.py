@@ -188,8 +188,8 @@ def handle_disconnect():
         print(active_users)
         print(request.sid)
         print(active_users[request.sid])
-        username = active_users[request.sid][1]["username"]
-        room=active_users[request.sid][1]["destination"]
+        username = active_users[request.sid]["username"]
+        room=active_users[request.sid]["destination"]
         remove_active_user(request.sid)
         if username != "Guest":
             UserList=get_user_list(room)
@@ -467,7 +467,7 @@ def like_comment(data):
     if dest == "Bills":
         comment = BillsComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid][1]["username"]
+        username = active_users[request.sid]["username"]
         if username in likes_list:
             emit('like_alert')
             return
@@ -478,7 +478,7 @@ def like_comment(data):
     elif dest == "Sabres":
         comment = SabresComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid][1]["username"]
+        username = active_users[request.sid]["username"]
         if username in likes_list:
             emit('like_alert')
             return
@@ -491,7 +491,7 @@ def like_comment(data):
     else:
         comment = Comments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid][1]["username"]
+        username = active_users[request.sid]["username"]
         if username in likes_list:
             emit('like_alert')
             return
@@ -581,11 +581,16 @@ def upload_profile_picture():
 def send_user_list(data):
     dest = data['dest']
     user_list = get_user_list(dest)
+    
     if user_list:
+        print("User List Exists")
+        print(user_list)
         users_in_chat = user_list.get('UsersInChat', {})
         filtered_user_list = [(user, time) for user, time in users_in_chat.items() if user != "Guest"]
+        print(filtered_user_list)
         emit('user_list', {'user_list': filtered_user_list, 'dest': dest})
     else:
+        print("UserList Empty")
         emit('user_list', {'user_list': [], 'dest': dest})  
 
 if __name__ == "__main__":
