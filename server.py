@@ -34,7 +34,6 @@ VIDEO_SIGNATURES = {
 }
 
 filter = {"dingus"}
-user_list = {'Bills': {}, 'General': {}, 'Sabres': {}}
 
 def validate_image_signature(signature):
     for magic_number, image_type in IMAGE_SIGNATURES.items():
@@ -66,7 +65,12 @@ if "media_id" not in db.list_collection_names():
 if "BillsComments" not in db.list_collection_names():
     db.create_collection("BillsComments")
 if "SabresComments" not in db.list_collection_names():
-    db.create_collection("SabresComments")   
+    db.create_collection("SabresComments")  
+if "ActiveUsers" not in db.list_collection_names():
+    db.create_collection("ActiveUsers") 
+if "UserList" not in db.list_collection_names():
+    db.create_collection("UserList")
+
 Comments = db["Comments"]
 BillsComments=db["BillsComments"]
 SabresComments=db["SabresComments"]
@@ -75,8 +79,54 @@ Users= db["Users"]
 xsrf=db["XSRF"]
 ID = db["id"]
 media_id = db["media_id"]
+UserList=db["UserList"]
+active_users=db["ActiveUsers"]
+for destination in ['Bills', 'General', 'Sabres']:
+    UserList.insert_one({'destination': destination, 'users': {}})
 bcrypt = Bcrypt()
 
+def get_active_users():
+    active_users_collection = db["ActiveUsers"]
+    active_users = {}
+    for user_data in active_users_collection.find():
+        active_users[user_data['sid']] = {'username': user_data['username'], 'destination': user_data['destination']}
+    return active_users
+
+def update_active_users(sid, username, destination):
+    active_users_collection = db["ActiveUsers"]
+    active_users_collection.update_one({'sid': sid}, {'$set': {'username': username, 'destination': destination}}, upsert=True)
+
+def remove_active_user(sid):
+    active_users_collection = db["ActiveUsers"]
+    active_users_collection.delete_one({'sid': sid})
+
+def update_user_list(destination, username):
+    user_list_collection = db["UserList"]
+    user_list = user_list_collection.find_one({'destination': destination})
+    if user_list:
+        users = user_list['users']
+        users[username] = datetime.now()
+        user_list_collection.update_one({'destination': destination}, {'$set': {'users': users}})
+    else:
+        user_list_collection.insert_one({'destination': destination, 'users': {username: datetime.now()}})
+def remove_user_from_list(dest, username):
+    user_list_collection = db["UserList"]
+    user_list_document = user_list_collection.find_one({'destination': dest})
+
+    if user_list_document and dest in user_list_document:
+        user_list = user_list_document[dest]
+        if username in user_list:
+            del user_list[username]
+            # Update the document in the collection after removing the user
+            user_list_collection.update_one({'destination': dest}, {'$set': {dest: user_list}})
+
+def get_user_list(destination):
+    user_list_collection = db["UserList"]
+    user_list = user_list_collection.find_one({'destination': destination})
+    if user_list:
+        return user_list['users']
+    else:
+        return {}
 request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
 blocked_ips = {}
 
@@ -112,37 +162,40 @@ def handle_connect():
     username = request.args.get('username')
     if username != 'Guest':
         if dest == "Bills" or dest == "Sabres" or dest == "General":
-            user_list[dest][username] = datetime.now()
+            update_user_list(dest,username)
             emit('user_joined', {'room': dest}, broadcast=True)
 
     if auth_token:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_data = Tokens.find_one({"token_hash": token_hash})
         if user_data:
-            
-            active_users[request.sid] = [user_data.get('username'),dest]
+            update_active_users(request.sid,user_data.get('username'),dest)
+            active_users=get_active_users()
             print("Valid USER! active users is now "+str(active_users ))
         else:
-            active_users[request.sid] = ["Guest",dest]
+            update_active_users(request.sid,"Guest",dest)
+            active_users=get_active_users()
             print("GUEST USER! active users is now "+str(active_users ))
 
             
     else:
-        active_users[request.sid] = ["Guest",dest]
+        update_active_users(request.sid,"Guest",dest)
+        active_users=get_active_users()
         print("INVALID AUTH TOKEN USER! active users is now "+str(active_users ))
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
     print("Handling disconnect")
+    active_users=get_active_users
     if request.sid in active_users:
         print("Balls")
         username = active_users[request.sid][0]
         room=active_users[request.sid][1]
         del active_users[request.sid]
         if username != "Guest":
-            if username in user_list[room]:
-                del user_list[room][username]
+            if username in UserList[room]:
+                remove_user_from_list(room,username)
                 print("Emitting")
                 emit('user_left', {'room': room}, broadcast=True)
 
@@ -168,8 +221,8 @@ def HomePage():
             username = "Guest"
     if hasattr(request, 'sid'):
         sid=request.sid
-        if sid in active_users:     
-            active_users[request.sid]=""
+        if sid in active_users:
+            update_active_users(request.sid,"","")    
     return render_template('index.html', username=username, error=error_message, regfailure=regfailure, regsuccess=regsuccess)
 
 @app.route("/javascript.js")
@@ -385,6 +438,7 @@ def create_comment(data):
         SabresComments.insert_one(new_comment)
     if hasattr(request, 'sid'):
         sid = request.sid
+        active_users=get_active_users()
         if sid in active_users:
             message = data.get('message')
             print(active_users)
@@ -398,6 +452,8 @@ def like_comment(data):
     dest = data.get('destination')
     id=data.get("id")
     NumOfLikes = 120
+    active_users=get_active_users()
+
     if dest == "Bills":
         comment = BillsComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
