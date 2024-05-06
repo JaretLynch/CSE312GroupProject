@@ -5,10 +5,10 @@ The newest version of the app is running from the master branch. To run locally,
 Bonus Feature: Content Filter
 The site has a filter so that if a username is submitted for registration that contains a banned word, the user will be alerted and the account will not be registered
 In the same vein, sending a message that contains a banned word will alert the user and the message will not be submitted and shown to other users
-
+We have added a list of banned phrases in a seperate file that you can use for testing.
 Testing:
 1. Navigate to the public deployment (cse312theprogrammers.me)
-2. Attempt to register with an account that contains the banned word "dingus" (This is simply a test word as we do not want anyone to have to test with actual offensive content)
+2. Attempt to register with an account that contains the banned phrase "13 seconds"
 3. Verify that the page returns to the homepage and that an error message is displayed below the registration form
 4. Register with an account that contains "dingus", but with several capital letters (Ex. DiNgUs)
 5. Verify that the page returns to the homepage and that the same error message is displayed
