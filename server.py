@@ -149,7 +149,7 @@ def Before():
         return jsonify({"error": "Too Many Requests. Try again later."}), 429
 
 @app.after_request
-@limiter.limit('50 per 10 seconds')
+@limiter.limit('10 per 10 seconds')
 def add_header(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
