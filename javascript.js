@@ -35,11 +35,11 @@ $(document).ready(function() {
         });
 
         socket.on('user_joined', function() {
-            socket.emit('get_user_list', {'room': name, 'username': username});
+            socket.emit('get_user_list', {'room': dest, 'username': username});
         });
 
         socket.on('user_left', function(){
-            socket.emit('get_user_list', {'room': name, 'username': username});
+            socket.emit('get_user_list', {'room': dest, 'username': username});
         });
 
         socket.on('user_list', function(data) {
