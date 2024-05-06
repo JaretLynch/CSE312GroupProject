@@ -1,9 +1,15 @@
 
 var intervalId;
+function welcome(){
+
+    console.log("Welcome")
+}
 $(document).ready(function() {
     var dest = $('#Name').text();
     console.log("Dest: ", dest)
     console.log("Document: ", document)
+    var username = usernameEntry.textContent.replace("Logged in as: ", "");
+
     // Function to establish WebSocket connection
     function connectWebSocket(dest) {
         var usernameEntry = document.getElementById("usernameEntry");
@@ -29,29 +35,15 @@ $(document).ready(function() {
         });
 
         socket.on('user_joined', function() {
-            socket.emit('get_user_list', {'room': name, 'username': username});
+            socket.emit('get_user_list', {'dest': dest, 'username': username});
+            console.log("User joing and destination is ")
+            console.log(dest)
         });
 
         socket.on('user_left', function(){
-            socket.emit('get_user_list', {'room': name, 'username': username});
-        });
-
-        socket.on('user_list', function(data) {
-            var activeUsers = data.user_list;
-            console.log("Active users: ", activeUsers)
-            $('#userlist').empty();
-            activeUsers.forEach(function(user) {
-                var userElement = $('<div class="user"></div>');
-                // Calculate the duration in minutes and seconds
-                var minutes = Math.floor(user[1] / 60);
-                var seconds = user[1] % 60;
-                // Format the duration string
-                var durationString = minutes + " minutes " + seconds + " seconds";
-                // Append the username and duration to the user element
-                userElement.append('<strong>' + user[0] + '</strong>');
-                userElement.append('<span> Active for ' + durationString + '</span>');
-                $('#userlist').append(userElement);
-            });
+            socket.emit('get_user_list', {'dest': dest, 'username': username});
+            console.log("User leaving and destination is ")
+            console.log(dest)
         });
 
         $('#send-comment').click(function (event) {
@@ -75,34 +67,51 @@ $(document).ready(function() {
 
         // Event listener for like buttons
         $(document).on('click', '.like-btn', function() {
+            if (username =="Guest") {
+                // Show a popup informing the user to login
+                alert('You need to login to use the like feature.');
+                return; // Stop further execution
+            }
             // Get the comment ID from the data attribute
             var commentId = $(this).data('comment-id');
             socket.emit('like_comment', { "id": commentId, "destination": dest})
         });
 
-        socket.on('Comment_Broadcasted', function() {
-            console.log("CommentBroadcasted");
-            fetchCommentsAndUpdate(dest)
+        socket.on('Comment_Broadcasted', function(comment) {
+            console.log("CommentBroadcasted")
+            // Extract the username and message from the received data
+            commentElement=$('#comments')
+
+            // Update the comments section with the new comment
+            commentElement.append('<strong>' + comment.author + '</strong>: ' + comment.content);
+            commentElement.append('<br><span class="comment-id"> ID: ' + comment.comment_id + ' </span>');
+            commentElement.append('<button class="like-btn" data-comment-id="' + comment.comment_id + '">Like</button>');
+            commentElement.append('<span class="likes-count" id="'+comment.comment_id+'"> Likes: ' + comment.likes + '</span>'+'<br>');
         });
         socket.on('filter_triggered', function() {
             document.getElementById('messagesent').innerText = "Your comment was not submitted due to containing a banned word."
         });
-        socket.on('user_joined', function() {
-            socket.emit('get_user_list', {'dest': dest, 'username': username});
+        socket.on('like_alert', function() {
+            alert('You have already liked this comment.'); // Display an alert
         });
-        socket.on('user_left', function(){
-            socket.emit('get_user_list', {'dest': dest, 'username': username});
-        });
-        socket.on('Comment_Liked', function() {
+        socket.on('Comment_Liked', function(comment) {
             console.log("CommentLiked");
-            fetchCommentsAndUpdate(dest)
+            ID=comment.comment_id
+            NumOfLikes=comment.NumOfLikes
+            console.log("Comment ID Is",ID)
+            commentElement=document.getElementById(ID)
+            commentElement.innerHTML='<span class="likes-count" id="'+ID+'">Likes: '+NumOfLikes+'</span>'
+            // fetchCommentsAndUpdate(dest)
         });
         socket.on('connect_error', function(error) {
             console.error('WebSocket connection error:', error);
         });
         socket.on('user_list', function(data) {
+            var now = new Date(data.now);
+            var entryTime = new Date(data.Entry_time);
+           
             var activeUsers = data.user_list;
-            console.log("Active users: ", activeUsers)
+            
             $('#userlist').empty();
             activeUsers.forEach(function(user) {
                 var userElement = $('<div class="user"></div>');
@@ -120,7 +129,10 @@ $(document).ready(function() {
         function startSocketEmit() {
             intervalId = setInterval(function() {
                 if (!document.hidden) {
-                    socket.emit('get_user_list', {dest: dest});
+                    validRooms=["Bills","Sabres","General"]
+                    if ( validRooms.includes(dest)){
+                        socket.emit('get_user_list', {dest: dest});
+                    }
                 }
             }, 1000);
         }
@@ -150,30 +162,30 @@ $(document).ready(function() {
 
     
     // Function to fetch comments and update comments section
-    function fetchCommentsAndUpdate(destination) {
-        $.get('/get_comments', { destination: destination }, function(data) {
-            // Clear existing comments
-            $('#comments').empty();
+    // function fetchCommentsAndUpdate(destination) {
+    //     $.get('/get_comments', { destination: destination }, function(data) {
+    //         // Clear existing comments
+    //         $('#comments').empty();
 
-            // Iterate over fetched comments and construct HTML elements
-            data.comments.forEach(function(comment) {
-                var commentElement = $('<div class="comment"></div>');
-                if (comment.profile_pic) {
-                    commentElement.append(comment.profile_pic);
-                }
-                commentElement.append('<strong>' + comment.author + '</strong>: ' + comment.content);
-                commentElement.append('<br><span class="comment-id"> ID: ' + comment.comment_id + ' </span>');
-                commentElement.append('<button class="like-btn" data-comment-id="' + comment.comment_id + '">Like</button>');
-                commentElement.append('<span class="likes-count"> Likes: ' + comment.likes.length + '</span>');
+    //         // Iterate over fetched comments and construct HTML elements
+    //         data.comments.forEach(function(comment) {
+    //             var commentElement = $('<div class="comment"></div>');
+    //             if (comment.profile_pic) {
+    //                 commentElement.append(comment.profile_pic);
+    //             }
+    //             commentElement.append('<strong>' + comment.author + '</strong>: ' + comment.content);
+    //             commentElement.append('<br><span class="comment-id"> ID: ' + comment.comment_id + ' </span>');
+    //             commentElement.append('<button class="like-btn" data-comment-id="' + comment.comment_id + '">Like</button>');
+    //             commentElement.append('<span class="likes-count"> Likes: ' + comment.likes.length + '</span>');
 
-                // Append comment element to comments section
-                $('#comments').append(commentElement);
-            });
-        });
-    }
+    //             // Append comment element to comments section
+    //             $('#comments').append(commentElement);
+    //         });
+    //     });
+    // }
     if (dest === "Bills" || dest === "Sabres" || dest === "General") {
         connectWebSocket(dest);
-        fetchCommentsAndUpdate(dest);
+        // fetchCommentsAndUpdate(dest);
     }
     else{
         connectWebSocket("False")

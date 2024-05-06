@@ -8,14 +8,14 @@ import html
 import os
 import ssl
 import re
-from datetime import datetime
+from datetime import datetime,timedelta
 from collections import defaultdict
 import time
 from flask import Flask, request, jsonify
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from time import time
-
+from ImageSources import Sources 
 app = Flask(__name__, template_folder='.')
 # context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
 # context.load_cert_chain('/app/nginx/fullchain.pem', '/app/nginx/privkey.pem')
@@ -32,9 +32,8 @@ IMAGE_SIGNATURES = {
 VIDEO_SIGNATURES = {
     b'\x00\x00\x00\x18ftypmp4': 'mp4'    # MP4
 }
-
-filter = {"dingus"}
-user_list = {'Bills': {}, 'General': {}, 'Sabres': {}}
+from BannedWords import bannedPhrases
+filter = bannedPhrases
 
 def validate_image_signature(signature):
     for magic_number, image_type in IMAGE_SIGNATURES.items():
@@ -66,7 +65,18 @@ if "media_id" not in db.list_collection_names():
 if "BillsComments" not in db.list_collection_names():
     db.create_collection("BillsComments")
 if "SabresComments" not in db.list_collection_names():
-    db.create_collection("SabresComments")   
+    db.create_collection("SabresComments")  
+if "ActiveUsers" not in db.list_collection_names():
+    db.create_collection("ActiveUsers") 
+if "UserList" not in db.list_collection_names():
+    db.create_collection("UserList")
+    for destination in ['Bills', 'General', 'Sabres']:
+        existing_record = db["UserList"].find_one({'destination': destination})
+        if not existing_record:
+            db["UserList"].insert_one({'destination': destination, 'UsersInChat': {}})
+if "BlockedIps" not in db.list_collection_names():
+    db.create_collection("BlockedIps") 
+
 Comments = db["Comments"]
 BillsComments=db["BillsComments"]
 SabresComments=db["SabresComments"]
@@ -75,59 +85,132 @@ Users= db["Users"]
 xsrf=db["XSRF"]
 ID = db["id"]
 media_id = db["media_id"]
+UserList=db["UserList"]
+active_users=db["ActiveUsers"]
+blocked_ips=db["BlockedIps"]
 bcrypt = Bcrypt()
 
-request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
-blocked_ips = {}
+def get_active_users():
+    active_users_collection = db["ActiveUsers"]
+    active_users = {}
+    for user_data in active_users_collection.find():
+        active_users[user_data['sid']] = {'username': user_data['username'], 'destination': user_data['destination']}
+    return active_users
+
+def update_active_users(sid, username, destination):
+    active_users_collection = db["ActiveUsers"]
+    active_users_collection.update_one({'sid': sid}, {'$set': {'username': username, 'destination': destination}}, upsert=True)
+
+def remove_active_user(sid):
+    active_users_collection = db["ActiveUsers"]
+    active_users_collection.delete_one({'sid': sid})
+
+def update_user_list(destination, username):
+    user_list_collection = db["UserList"]
+    user_list_collection.update_one(
+        {"destination": destination},
+        {'$set': {f"UsersInChat.{username}": datetime.now()}},
+        upsert=True
+    )
+
+def remove_user_from_list(dest, username):
+    user_list_collection = db["UserList"]
+    user_list_collection.update_one(
+        {"destination": dest},
+        {'$unset': {f"UsersInChat.{username}": ""}}
+    )
+
+def get_user_list(destination):
+    user_list_collection = db["UserList"]
+    user_list_document = user_list_collection.find_one({'destination': destination})
+    if user_list_document:
+        return user_list_document.get("UsersInChat", {})
+    else:
+        return {}
+def block_ip(request):
+    expiry = datetime.now() + timedelta(seconds=30)
+    ip=get_remote_address()
+    blocked_ips.update_one({"IP": ip}, {"$set": {"expiry": expiry}}, upsert=True)
+    print("BLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\n")
 
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["50 per 10 seconds"]
+    default_limits=["10 per 10 seconds"],
+    on_breach=block_ip
 )
 
 @app.before_request
-def block_ip():
+@limiter.limit('10 per 10 seconds')
+def Before():
     ip = get_remote_address()
-    if ip in blocked_ips:
-        if time() - blocked_ips[ip] < 30:
-            return jsonify({"error": "Too Many Requests. Try again later."}), 429
-        else:
-            del blocked_ips[ip]
+    blocked_ip = blocked_ips.find_one({"IP": ip})
 
-    
+    if blocked_ip and blocked_ip["expiry"] > datetime.now():
+        return jsonify({"error": "Too Many Requests. Try again later."}), 429
+
 @app.after_request
+@limiter.limit('10 per 10 seconds')
 def add_header(response):
-    ip = get_remote_address()
-    if limiter.hit or response.status_code == 429:
-        blocked_ips[ip] = time()
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
 @socketio.on('connect')
 def handle_connect():
+    active_users=get_active_users()
+    print("Incoming websocket connection and active_users is "+str(active_users))
+    auth_token = request.cookies.get('auth_token')
+    dest=request.args.get('dest')
     username = request.args.get('username')
-    dest = request.args.get('dest')
     if username != 'Guest':
-        active_users[request.sid] = username
         if dest == "Bills" or dest == "Sabres" or dest == "General":
-            user_list[dest][username] = datetime.now()
-            emit('user_joined', {'dest': dest}, broadcast=True)
+            update_user_list(dest,username)
+            emit('user_joined', {'room': dest}, broadcast=True)
+
+    if auth_token:
+        token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
+        user_data = Tokens.find_one({"token_hash": token_hash})
+        if user_data:
+            update_active_users(request.sid,user_data.get('username'),dest)
+            active_users=get_active_users()
+            print("Valid USER! active users is now "+str(active_users ))
+        else:
+            update_active_users(request.sid,"Guest",dest)
+            active_users=get_active_users()
+            print("GUEST USER! active users is now "+str(active_users ))
+
+            
     else:
-        active_users[request.sid] = "Guest"
+        update_active_users(request.sid,"Guest",dest)
+        active_users=get_active_users()
+        print("INVALID AUTH TOKEN USER! active users is now "+str(active_users ))
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    print("Handling disconnect")
+    active_users=get_active_users()
     if request.sid in active_users:
-        username = active_users.get(request.sid, "Guest")
-        del active_users[request.sid]
+        print("Balls")
+        print("active Users is "+str(active_users))
+        print("Request id is "+str(request.sid))
+        print("active_users[request.sid] is "+str(active_users[request.sid]))
+        username = active_users[request.sid]["username"]
+        room=active_users[request.sid]["destination"]
+        
+        remove_active_user(request.sid)
         if username != "Guest":
-            for room, users_in_room in user_list.items():
-                users_in_room.pop(username, None)
+            UserList=get_user_list(room)
+            print("UserList is "+str(UserList))
+            if username in UserList:
+                remove_user_from_list(room,username)
+                print("Emitting")
                 emit('user_left', {'room': room}, broadcast=True)
 
 @app.route("/")
 def HomePage():
+    active_users=get_active_users()
+    print("HOME")
     error_message = request.args.get('error')
     username = request.args.get('username', "Guest")
     regfailure = request.args.get('regfailure')
@@ -135,17 +218,20 @@ def HomePage():
     app.logger.info("Accessing home page")
     comments = list(Comments.find())
     auth_token = request.cookies.get('auth_token')
+    print("Im here")
     if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
+            print("BUG")
             pass
         else:
+            print("Bug2")
             username = "Guest"
     if hasattr(request, 'sid'):
         sid=request.sid
-        if sid in active_users:     
-            active_users[request.sid]=""
+        if sid in active_users:
+            update_active_users(request.sid,"","")    
     return render_template('index.html', username=username, error=error_message, regfailure=regfailure, regsuccess=regsuccess)
 
 @app.route("/javascript.js")
@@ -172,7 +258,7 @@ def ServeBillsChatroom():
         username = "Guest"
     chatroom_data = {'Name': 'Bills',
                      'username':username,
-                     'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
+                     'image': Sources.BillsSource,
                      'comments': comments}
 
     return render_template('chatroom.html', username=username, data=chatroom_data)
@@ -193,7 +279,7 @@ def ServeGeneralChatroom():
         username = "Guest"
     chatroom_data = {'Name': 'General',
                      'username':username,
-                     'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD', 'comments': comments}
+                     'image': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Buffalo_Bisons_Mascot_At_Trenton_Thunder_Game.jpg/238px-Buffalo_Bisons_Mascot_At_Trenton_Thunder_Game.jpg', 'comments': comments}
     return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route("/Sabres")
@@ -204,7 +290,6 @@ def ServeSabresChatroom():
     if auth_token and username != "Guest":
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
-        print(user_token)
         if user_token and user_token['username'] == username:
             pass
         else:
@@ -213,8 +298,8 @@ def ServeSabresChatroom():
         username = "Guest"
     chatroom_data = {'Name': 'Sabres',
                      'username':username,
-                     'image': 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.espn.com%2Fnfl%2Fteam%2F_%2Fname%2Fbuf%2Fbuffalo-bills&psig=AOvVaw0QbueB9NdmEi0At9CXgfyY&ust=1713585929523000&source=images&cd=vfe&opi=89978449&ved=0CBIQjRxqFwoTCIjg6pqzzYUDFQAAAAAdAAAAABAD',
-                     'coments': comments}
+                     'image': Sources.SabresSource,
+                     'comments': comments}
     return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route('/img/<path:filename>')
@@ -241,22 +326,29 @@ def serve_image(filename):
 
 @app.route('/register', methods=['POST'])
 def register():
+    print("at register")
     username = request.form.get('username')
+    print("after Username")
     if any(re.search(re.escape(word), username, re.IGNORECASE) for word in filter):
+        print("Searching")
         error_message = 'Username cannot be used due to containing a banned word.'
         return redirect(url_for('HomePage', username="Guest", error=error_message, regfailure = "Yes"))
+    print("BEfore passwords")
     password1 = request.form.get('password1')
     password2 = request.form.get('password2')
+    print("Before Username Exists")
     username_exists = get_username(username)
     if username_exists:
         error_message = 'Username already exists.'
         return redirect(url_for('HomePage', error=error_message, username="Guest", regfailure = "Yes"))
+    print("After username exists")
     if password1 != password2:
         error_message = 'Passwords do not match.'
         return redirect(url_for('HomePage', error=error_message, username="Guest"), regfailure = "Yes")
     hashed_password = bcrypt.generate_password_hash(password1)
     user_data = {"username": username, "password": hashed_password}
     Users.insert_one(user_data)
+    print("PROPERLY REDIRECTING")
     return redirect(url_for('HomePage', username="Guest", regsuccess = "Yes"))
 
 def get_username(username):
@@ -353,30 +445,82 @@ def create_comment(data):
         BillsComments.insert_one(new_comment)
     elif destination == "Sabres":
         SabresComments.insert_one(new_comment)
-    emit('Comment_Broadcasted', broadcast=True)
+    if hasattr(request, 'sid'):
+        print("Balls")
+        sid = request.sid
+        active_users=get_active_users()
+        print("-------------------------")
+        print(active_users)
+        print('--------------------------')
+        if sid in active_users:
+            print("Sid in active Users")
+            message = data.get('message')
+            for item in active_users.items():
+                print("item is "+str(item))
+                sid=item[0]
+                user_username=item[1]["username"]
+                print("Username Is "+str(user_username))
+                user_chatroom=item[1]["destination"]
+                print("Chatroom Is "+str(user_chatroom))
+                if user_chatroom == destination:
+                    print("EMITTING TO "+str(user_username))
+                    emit('Comment_Broadcasted', {'author': author, 'content': content,'comment_id':new_comment.get('comment_id'),'likes':"0"}, room=sid)
 
 @socketio.on('like_comment')
 def like_comment(data):
     dest = data.get('destination')
+    id=data.get("id")
+    NumOfLikes = 120
+    active_users=get_active_users()
+
     if dest == "Bills":
         comment = BillsComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid]
-        if username != "Guest" and username not in likes_list:
-            BillsComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+        username = active_users[request.sid]["username"]
+        if username in likes_list:
+            emit('like_alert')
+            return
+        elif  username != "Guest":
+            Result=BillsComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            comment = BillsComments.find_one({"comment_id": data.get("id")})
+            NumOfLikes=len(comment.get("likes"))
     elif dest == "Sabres":
         comment = SabresComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid]
-        if username != "Guest" and username not in likes_list:
-            SabresComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+        username = active_users[request.sid]["username"]
+        if username in likes_list:
+            emit('like_alert')
+            return
+        elif  username != "Guest":
+            Result=SabresComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            comment = SabresComments.find_one({"comment_id": data.get("id")})
+
+            NumOfLikes=len(comment.get("likes"))
+
     else:
         comment = Comments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid]
-        if username != "Guest" and username not in likes_list:
-            Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
-    emit('Comment_Liked')
+        username = active_users[request.sid]["username"]
+        if username in likes_list:
+            emit('like_alert')
+            return
+        elif  username != "Guest":
+            Result=Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            comment = Comments.find_one({"comment_id": data.get("id")})
+
+            NumOfLikes=len(comment.get("likes"))
+
+
+    if hasattr(request, 'sid'):
+        sid = request.sid
+        active_users=get_active_users()
+        if sid in active_users:
+            message = data.get('message')
+            for item in active_users.items():
+                sid=item[0]
+                user_chatroom=item[1]["destination"]
+                if user_chatroom == dest:
+                    emit('Comment_Liked', {'comment_id':id,"NumOfLikes":NumOfLikes}, room=sid)
 
 def get_next_id():
     document = ID.find_one()
@@ -392,6 +536,8 @@ def get_next_media_id():
 
 @app.route('/get_comments')
 def get_comments():
+    print("HO123123ME")
+
     destination = request.args.get('destination')
     if destination=="Bills":
         comments=BillsComments.find({})
@@ -404,7 +550,7 @@ def get_comments():
         comment['_id'] = str(comment['_id'])
         user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
         if user_data and 'profile_file' in user_data:
-            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50">'
+            profile_img_html = f'<img src="{user_data["profile_file"]}" width="50" height="50">'
             comment['profile_pic'] = profile_img_html
         comments_list.append(comment)
     return jsonify({'comments': comments_list})
@@ -438,25 +584,24 @@ def upload_profile_picture():
     response = redirect(url_for('HomePage', username=username))
     return response
 
-def get_user_list(dest):
-    now = datetime.now()
-    return [(user, (now - entry_time).seconds) for user, entry_time in user_list[dest].items()]
+
 
 @socketio.on('get_user_list')
 def send_user_list(data):
     dest = data['dest']
-    user_lists = get_user_list(dest)
-    emit('user_list', {'user_list': user_lists, 'dest': dest})
-    
-def get_user_list(room):
+    user_list = get_user_list(dest)
     now = datetime.now()
-    return [(user, (now - entry_time).seconds) for user, entry_time in user_list[room].items()]
-
-@socketio.on('get_user_list')
-def send_user_list(data):
-    room = data['room']
-    user_list = get_user_list(room)
-    emit('user_list', {'user_list': user_list, 'room': room})
+    if user_list:
+        users=[]
+        print("User List Exists")
+        print(user_list)
+        for user, entry_time in user_list.items():
+            users.append((user, (now-entry_time).seconds))
+        print(users)
+        emit('user_list', {'user_list': users, 'dest': dest})
+    else:
+        print("UserList Empty")
+        emit('user_list', {'user_list': [], 'dest': dest})  
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080)

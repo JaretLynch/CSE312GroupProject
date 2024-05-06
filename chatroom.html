@@ -32,6 +32,13 @@
                 </form>
             </div>
             <div>
+                <form action="/Bills" method="GET">
+                    <input type="hidden" name="username" value="{{ data.username }}">
+
+                    <button type="submit">Bills </button>
+                </form>
+            </div>
+            <div>
                 <form action="/Sabres" method="GET">
                     <input type="hidden" name="username" value="{{ data.username }}">
 
@@ -46,14 +53,6 @@
                 </form>
             </div>
         </div>
-        <h2>Online Users in Chatroom:</h2>
-        <div id = "userlist">
-        </div><br>
-
-        <h1 class="Welcome-Message">Welcome</h1>
-        {% if data.username %}
-        <p id="usernameEntry">Logged in as: {{ data.username }}</p>
-        {% endif %}<br>
         <h2>Online Users in Chatroom:</h2>
         <div id = "userlist">
         </div><br>
@@ -78,7 +77,7 @@
             <strong>{{ comment.author }}</strong>: {{ comment.content }}<br>
             <span class="comment-id">ID: {{ comment.comment_id }}</span>
             <button class="like-btn" data-comment-id="{{ comment.comment_id }}">Like</button>
-            <span class="likes-count">Likes: {{ comment.likes|length }}</span>
+            <span class="likes-count" id="{{comment.comment_id}}">Likes: {{ comment.likes|length }}</span><br>
         </div>
         {% endfor %}
     </div>

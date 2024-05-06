@@ -1,0 +1,1 @@
+bannedPhrases={"13 seconds","Tom Brady","Patrick Mahomes","Wide Right","No Goal","4 superbowls","0-4","Choke","Martin Lucic"}
