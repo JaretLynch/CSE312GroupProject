@@ -17,9 +17,9 @@ from flask_limiter.util import get_remote_address
 from time import time
 
 app = Flask(__name__, template_folder='.')
-context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-context.load_cert_chain('/app/nginx/fullchain.pem', '/app/nginx/privkey.pem')
-socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'], ssl_context=context)
+# context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+# context.load_cert_chain('/app/nginx/fullchain.pem', '/app/nginx/privkey.pem')
+socketio = SocketIO(app, cors_allowed_origins="*", transport = ['websocket'])
 active_users = {}
 mongo_client = MongoClient("mongodb+srv://Jaretl123:Jaretl123@cluster0.dpg3dfq.mongodb.net/")
 

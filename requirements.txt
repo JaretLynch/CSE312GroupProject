@@ -6,3 +6,4 @@ flask_socketio
 gunicorn
 gevent
 flask_limiter
+flask_limiter.util
