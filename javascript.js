@@ -116,6 +116,7 @@ $(document).ready(function() {
                     console.log(dest)
                     validRooms=["Bills","Sabres","General"]
                     if (dest in validRooms){
+                        console.log("VALID")
                         socket.emit('get_user_list', {dest: dest});
                     }
                 }
