@@ -134,6 +134,7 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    print("Handling disconnect")
     if request.sid in active_users:
         username = active_users[request.sid][0]
         room=active_users[request.sid][1]
@@ -270,7 +271,6 @@ def register():
     password2 = request.form.get('password2')
     username_exists = get_username(username)
     if username_exists:
-
         error_message = 'Username already exists.'
         return redirect(url_for('HomePage', error=error_message, username="Guest", regfailure = "Yes"))
     if password1 != password2:
