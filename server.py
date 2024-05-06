@@ -127,12 +127,13 @@ def handle_connect():
 
             
     else:
+        active_users[request.sid] = ["Guest",dest]
         print("INVALID AUTH TOKEN USER! active users is now "+str(active_users ))
 
-        active_users[request.sid] = ["Guest",dest]
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    print("DISCONNECTION DETECTED")
     if request.sid in active_users:
         username = active_users[request.sid][0]
         room=active_users[request.sid][1]
