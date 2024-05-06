@@ -193,6 +193,7 @@ def handle_disconnect():
         remove_active_user(request.sid)
         if username != "Guest":
             UserList=get_user_list(room)
+            print(UserList)
             if username in UserList[room]:
                 remove_user_from_list(room,username)
                 print("Emitting")
