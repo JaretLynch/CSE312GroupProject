@@ -115,12 +115,8 @@ $(document).ready(function() {
         function startSocketEmit() {
             intervalId = setInterval(function() {
                 if (!document.hidden) {
-                    console.log("Getting User List from Interval")
-                    console.log("dest is ")
-                    console.log(dest)
                     validRooms=["Bills","Sabres","General"]
                     if ( validRooms.includes(dest)){
-                        console.log("VALID")
                         socket.emit('get_user_list', {dest: dest});
                     }
                 }
