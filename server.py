@@ -195,7 +195,7 @@ def handle_disconnect():
         if username != "Guest":
             UserList=get_user_list(room)
             print("UserList is "+str(UserList))
-            if username in UserList[room]:
+            if username in UserList:
                 remove_user_from_list(room,username)
                 print("Emitting")
                 emit('user_left', {'room': room}, broadcast=True)
