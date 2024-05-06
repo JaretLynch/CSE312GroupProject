@@ -446,7 +446,7 @@ def get_user_list(dest):
 def send_user_list(data):
     dest = data['dest']
     user_lists = get_user_list(dest)
-    emit('user_list', {'user_list': user_lists, 'dest': dest})
+    emit('user_list', {'now':datetime.now(),"Entry_time":user_list[dest][0][1],'user_list': user_lists, 'dest': dest})
     
 
 if __name__ == "__main__":

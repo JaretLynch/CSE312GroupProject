@@ -92,6 +92,10 @@ $(document).ready(function() {
             console.error('WebSocket connection error:', error);
         });
         socket.on('user_list', function(data) {
+            var now = new Date(data.now);
+            var entryTime = new Date(data.Entry_time);
+            console.log("Now:", now);
+            console.log("Entry Time:", entryTime);
             var activeUsers = data.user_list;
             console.log("Active users: ", activeUsers)
             $('#userlist').empty();
