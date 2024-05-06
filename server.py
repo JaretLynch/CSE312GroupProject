@@ -563,9 +563,7 @@ def upload_profile_picture():
     response = redirect(url_for('HomePage', username=username))
     return response
 
-def get_user_list(dest):
-    now = datetime.now()
-    return [(user, (now - entry_time).seconds) for user, entry_time in user_list[dest].items()]
+
 
 @socketio.on('get_user_list')
 def send_user_list(data):
