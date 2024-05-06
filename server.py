@@ -124,7 +124,7 @@ def get_user_list(destination):
     user_list_collection = db["UserList"]
     user_list = user_list_collection.find_one({'destination': destination})
     if user_list:
-        return user_list['users']
+        return user_list
     else:
         return {}
 request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
