@@ -82,12 +82,12 @@ blocked_ips = {}
 
 limiter = Limiter(
     app,
-    key_func=get_remote_address(),
+    key_func=get_remote_address,
     default_limits=["50 per 10 seconds"]
 )
 @app.before_request
 def block_ip():
-    ip = request.remote_addr
+    ip = get_remote_address()
     if ip in blocked_ips:
         if time() - blocked_ips[ip] < 30:
             return jsonify({"error": "Too Many Requests. Try again later."}), 429
@@ -97,7 +97,7 @@ def block_ip():
     
 @app.after_request
 def add_header(response):
-    ip = request.remote_addr
+    ip = get_remote_address()
     if limiter.hit or response.status_code == 429:
         blocked_ips[ip] = time()
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -458,4 +458,4 @@ def send_user_list(data):
     emit('user_list', {'user_list': user_list, 'room': room})
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=8080, ssl_context=context)
+    socketio.run(app, host="0.0.0.0", port=8080)
