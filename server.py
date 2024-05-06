@@ -131,11 +131,11 @@ def get_user_list(destination):
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["200 per 10 seconds"]
+    default_limits=["50 per 10 seconds"]
 )
 
 @app.before_request
-@limiter.limit('200 per 10 seconds')
+@limiter.limit('50 per 10 seconds')
 def block_ip():
     if limiter.limit:
         ip = get_remote_address()
@@ -145,7 +145,7 @@ def block_ip():
             return jsonify({"error": "Too Many Requests. Try again later."}), 429
 
 @app.after_request
-@limiter.limit('200 per 10 seconds')
+@limiter.limit('50 per 10 seconds')
 def add_header(response):
     ip = get_remote_address()
     if response.status_code == 429:
