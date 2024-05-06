@@ -118,11 +118,17 @@ def handle_connect():
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_data = Tokens.find_one({"token_hash": token_hash})
         if user_data:
+            
             active_users[request.sid] = [user_data.get('username'),dest]
+            print("Valid USER! active users is now "+str(active_users ))
         else:
             active_users[request.sid] = ["Guest",dest]
+            print("GUEST USER! active users is now "+str(active_users ))
+
             
     else:
+        print("INVALID AUTH TOKEN USER! active users is now "+str(active_users ))
+
         active_users[request.sid] = ["Guest",dest]
 
 @socketio.on('disconnect')
