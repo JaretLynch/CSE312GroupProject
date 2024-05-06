@@ -182,7 +182,7 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     print("Handling disconnect")
-    active_users=get_active_users
+    active_users=get_active_users()
     if request.sid in active_users:
         print("Balls")
         username = active_users[request.sid][0]
@@ -196,6 +196,7 @@ def handle_disconnect():
 
 @app.route("/")
 def HomePage():
+    active_users=get_active_users()
     print("HOME")
     error_message = request.args.get('error')
     username = request.args.get('username', "Guest")
@@ -489,6 +490,7 @@ def like_comment(data):
 
     if hasattr(request, 'sid'):
         sid = request.sid
+        active_users=get_active_users()
         if sid in active_users:
             message = data.get('message')
             for user_sid, (user_username, user_chatroom) in active_users.items():
