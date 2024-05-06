@@ -156,6 +156,7 @@ def add_header(response):
 
 @socketio.on('connect')
 def handle_connect():
+    active_users=get_active_users()
     print("Incoming websocket connection and active_users is "+str(active_users))
     auth_token = request.cookies.get('auth_token')
     dest=request.args.get('dest')
