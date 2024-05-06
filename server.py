@@ -162,6 +162,10 @@ def HomePage():
         else:
             print("Bug2")
             username = "Guest"
+    if hasattr(request, 'sid'):
+        sid=request.sid
+        if sid in active_users:     
+            active_users[request.sid]=""
     return render_template('index.html', username=username, error=error_message, regfailure=regfailure, regsuccess=regsuccess)
 
 @app.route("/javascript.js")
@@ -259,12 +263,14 @@ def register():
     print("at register")
     username = request.form.get('username')
     if any(re.search(re.escape(word), username, re.IGNORECASE) for word in filter):
+        print("Searching")
         error_message = 'Username cannot be used due to containing a banned word.'
         return redirect(url_for('HomePage', username="Guest", error=error_message, regfailure = "Yes"))
     password1 = request.form.get('password1')
     password2 = request.form.get('password2')
     username_exists = get_username(username)
     if username_exists:
+
         error_message = 'Username already exists.'
         return redirect(url_for('HomePage', error=error_message, username="Guest", regfailure = "Yes"))
     if password1 != password2:
