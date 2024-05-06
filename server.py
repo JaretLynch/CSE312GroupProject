@@ -131,7 +131,6 @@ def block_ip(request):
     expiry = datetime.now() + timedelta(seconds=30)
     ip=get_remote_address()
     blocked_ips.update_one({"IP": ip}, {"$set": {"expiry": expiry}}, upsert=True)
-    print("BLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\nBLOCKED BLOCKED BLOCKDED\r\n")
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -158,7 +157,6 @@ def add_header(response):
 @socketio.on('connect')
 def handle_connect():
     active_users=get_active_users()
-    print("Incoming websocket connection and active_users is "+str(active_users))
     auth_token = request.cookies.get('auth_token')
     dest=request.args.get('dest')
     username = request.args.get('username')
@@ -173,44 +171,34 @@ def handle_connect():
         if user_data:
             update_active_users(request.sid,user_data.get('username'),dest)
             active_users=get_active_users()
-            print("Valid USER! active users is now "+str(active_users ))
         else:
             update_active_users(request.sid,"Guest",dest)
             active_users=get_active_users()
-            print("GUEST USER! active users is now "+str(active_users ))
 
             
     else:
         update_active_users(request.sid,"Guest",dest)
         active_users=get_active_users()
-        print("INVALID AUTH TOKEN USER! active users is now "+str(active_users ))
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print("Handling disconnect")
     active_users=get_active_users()
     if request.sid in active_users:
-        print("Balls")
-        print("active Users is "+str(active_users))
-        print("Request id is "+str(request.sid))
-        print("active_users[request.sid] is "+str(active_users[request.sid]))
+
         username = active_users[request.sid]["username"]
         room=active_users[request.sid]["destination"]
         
         remove_active_user(request.sid)
         if username != "Guest":
             UserList=get_user_list(room)
-            print("UserList is "+str(UserList))
             if username in UserList:
                 remove_user_from_list(room,username)
-                print("Emitting")
                 emit('user_left', {'room': room}, broadcast=True)
 
 @app.route("/")
 def HomePage():
     active_users=get_active_users()
-    print("HOME")
     error_message = request.args.get('error')
     username = request.args.get('username', "Guest")
     regfailure = request.args.get('regfailure')
@@ -218,15 +206,12 @@ def HomePage():
     app.logger.info("Accessing home page")
     comments = list(Comments.find())
     auth_token = request.cookies.get('auth_token')
-    print("Im here")
     if auth_token and username:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
         if user_token and user_token['username'] == username:
-            print("BUG")
             pass
         else:
-            print("Bug2")
             username = "Guest"
     if hasattr(request, 'sid'):
         sid=request.sid
@@ -326,29 +311,22 @@ def serve_image(filename):
 
 @app.route('/register', methods=['POST'])
 def register():
-    print("at register")
     username = request.form.get('username')
-    print("after Username")
     if any(re.search(re.escape(word), username, re.IGNORECASE) for word in filter):
-        print("Searching")
         error_message = 'Username cannot be used due to containing a banned word.'
         return redirect(url_for('HomePage', username="Guest", error=error_message, regfailure = "Yes"))
-    print("BEfore passwords")
     password1 = request.form.get('password1')
     password2 = request.form.get('password2')
-    print("Before Username Exists")
     username_exists = get_username(username)
     if username_exists:
         error_message = 'Username already exists.'
         return redirect(url_for('HomePage', error=error_message, username="Guest", regfailure = "Yes"))
-    print("After username exists")
     if password1 != password2:
         error_message = 'Passwords do not match.'
         return redirect(url_for('HomePage', error=error_message, username="Guest"), regfailure = "Yes")
     hashed_password = bcrypt.generate_password_hash(password1)
     user_data = {"username": username, "password": hashed_password}
     Users.insert_one(user_data)
-    print("PROPERLY REDIRECTING")
     return redirect(url_for('HomePage', username="Guest", regsuccess = "Yes"))
 
 def get_username(username):
@@ -446,24 +424,16 @@ def create_comment(data):
     elif destination == "Sabres":
         SabresComments.insert_one(new_comment)
     if hasattr(request, 'sid'):
-        print("Balls")
         sid = request.sid
         active_users=get_active_users()
-        print("-------------------------")
-        print(active_users)
-        print('--------------------------')
+      
         if sid in active_users:
-            print("Sid in active Users")
             message = data.get('message')
             for item in active_users.items():
-                print("item is "+str(item))
                 sid=item[0]
                 user_username=item[1]["username"]
-                print("Username Is "+str(user_username))
                 user_chatroom=item[1]["destination"]
-                print("Chatroom Is "+str(user_chatroom))
                 if user_chatroom == destination:
-                    print("EMITTING TO "+str(user_username))
                     emit('Comment_Broadcasted', {'author': author, 'content': content,'comment_id':new_comment.get('comment_id'),'likes':"0"}, room=sid)
 
 @socketio.on('like_comment')
@@ -536,7 +506,6 @@ def get_next_media_id():
 
 @app.route('/get_comments')
 def get_comments():
-    print("HO123123ME")
 
     destination = request.args.get('destination')
     if destination=="Bills":
@@ -593,14 +562,10 @@ def send_user_list(data):
     now = datetime.now()
     if user_list:
         users=[]
-        print("User List Exists")
-        print(user_list)
         for user, entry_time in user_list.items():
             users.append((user, (now-entry_time).seconds))
-        print(users)
         emit('user_list', {'user_list': users, 'dest': dest})
     else:
-        print("UserList Empty")
         emit('user_list', {'user_list': [], 'dest': dest})  
 
 if __name__ == "__main__":
