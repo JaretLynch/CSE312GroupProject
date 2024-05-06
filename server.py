@@ -264,16 +264,20 @@ def serve_image(filename):
 def register():
     print("at register")
     username = request.form.get('username')
+    print("after Username")
     if any(re.search(re.escape(word), username, re.IGNORECASE) for word in filter):
         print("Searching")
         error_message = 'Username cannot be used due to containing a banned word.'
         return redirect(url_for('HomePage', username="Guest", error=error_message, regfailure = "Yes"))
+    print("BEfore passwords")
     password1 = request.form.get('password1')
     password2 = request.form.get('password2')
+    print("Before Username Exists")
     username_exists = get_username(username)
     if username_exists:
         error_message = 'Username already exists.'
         return redirect(url_for('HomePage', error=error_message, username="Guest", regfailure = "Yes"))
+    print("After username exists")
     if password1 != password2:
         error_message = 'Passwords do not match.'
         return redirect(url_for('HomePage', error=error_message, username="Guest"), regfailure = "Yes")
