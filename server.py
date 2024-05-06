@@ -137,17 +137,18 @@ limiter = Limiter(
 @app.before_request
 @limiter.limit('200 per 10 seconds')
 def block_ip():
-    ip = get_remote_address()
-    blocked_ip = blocked_ips.find_one({"IP": ip})
-    if blocked_ip and blocked_ip["expiry"] > datetime.now():
-        return jsonify({"error": "Too Many Requests. Try again later."}), 429
+    if limiter.limit:
+        ip = get_remote_address()
+        blocked_ip = blocked_ips.find_one({"IP": ip})
+
+        if blocked_ip and blocked_ip["expiry"] > datetime.now():
+            return jsonify({"error": "Too Many Requests. Try again later."}), 429
 
 @app.after_request
 @limiter.limit('200 per 10 seconds')
-
 def add_header(response):
     ip = get_remote_address()
-    if limiter.limit or response.status_code == 429:
+    if response.status_code == 429:
         expiry = datetime.now() + timedelta(seconds=30)
         blocked_ips.update_one({"IP": ip}, {"$set": {"expiry": expiry}}, upsert=True)
     response.headers['X-Content-Type-Options'] = 'nosniff'
