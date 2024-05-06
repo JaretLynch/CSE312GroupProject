@@ -107,45 +107,35 @@ def add_header(response):
 @socketio.on('connect')
 def handle_connect():
     username = request.args.get('username')
-    print(username)
     if username != 'Guest':
         active_users[request.sid] = username
         room = request.args.get('dest')
-        print(room)
         if room == "Bills" or room == "Sabres" or room == "General":
-            print("Adding User to list")
             user_list[room][username] = datetime.now()
             emit('user_joined', {'room': room}, broadcast=True)
 
     auth_token = request.cookies.get('auth_token')
 
     username = request.args.get('username')
-    print(auth_token)
     dest=request.args.get('dest')
-    print(dest)
     if auth_token:
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_data = Tokens.find_one({"token_hash": token_hash})
         if user_data:
             active_users[request.sid] = [user_data.get('username'),dest]
-            print(active_users)
         else:
             active_users[request.sid] = ["Guest",dest]
-            print(active_users)
             
     else:
         active_users[request.sid] = ["Guest",dest]
-        print(active_users)
 
 @socketio.on('disconnect')
 def handle_disconnect():
     if request.sid in active_users:
-        print("Request is in there")
         username = active_users.get(request.sid, "Guest")
         del active_users[request.sid]
         if username != "Guest":
             for room, users_in_room in user_list.items():
-                print("****USERNAME IS ***** "+str(username))
                 users_in_room.pop(username[0], None)
                 emit('user_left', {'room': room}, broadcast=True)
 
@@ -227,7 +217,6 @@ def ServeSabresChatroom():
     if auth_token and username != "Guest":
         token_hash = hashlib.sha256(auth_token.encode()).hexdigest()
         user_token = Tokens.find_one({"token_hash": token_hash})
-        print(user_token)
         if user_token and user_token['username'] == username:
             pass
         else:
@@ -377,15 +366,12 @@ def create_comment(data):
     elif destination == "Sabres":
         SabresComments.insert_one(new_comment)
     if hasattr(request, 'sid'):
-        print("Has Attribute")
         sid = request.sid
-        print(active_users)
         if sid in active_users:
             message = data.get('message')
             for user_sid, (user_username, user_chatroom) in active_users.items():
-                print("User is "+str(user_username)+"and they are in the "+str(user_chatroom)+" Chatroom")
-                print("Destination is"+str(destination))
                 if user_chatroom == destination:
+                    print("EMITTING TO "+str(user_username))
                     emit('Comment_Broadcasted', {'author': author, 'content': content,'comment_id':new_comment.get('comment_id'),'likes':"0"}, room=user_sid)
 
 @socketio.on('like_comment')
@@ -432,14 +418,10 @@ def like_comment(data):
 
 
     if hasattr(request, 'sid'):
-        print("Has Attribute")
         sid = request.sid
-        print(active_users)
         if sid in active_users:
             message = data.get('message')
             for user_sid, (user_username, user_chatroom) in active_users.items():
-                print("User is "+str(user_username)+"and they are in the "+str(user_chatroom)+" Chatroom")
-                print("Destination is"+str(dest))
                 if user_chatroom == dest:
                     emit('Comment_Liked', {'comment_id':id,"NumOfLikes":NumOfLikes}, room=user_sid)
 
