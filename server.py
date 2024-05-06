@@ -448,15 +448,6 @@ def send_user_list(data):
     user_lists = get_user_list(dest)
     emit('user_list', {'user_list': user_lists, 'dest': dest})
     
-def get_user_list(room):
-    now = datetime.now()
-    return [(user, (now - entry_time).seconds) for user, entry_time in user_list[room].items()]
-
-@socketio.on('get_user_list')
-def send_user_list(data):
-    room = data['room']
-    user_list = get_user_list(room)
-    emit('user_list', {'user_list': user_list, 'room': room})
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=8080)
