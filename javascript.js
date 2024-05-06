@@ -8,6 +8,8 @@ $(document).ready(function() {
     var dest = $('#Name').text();
     console.log("Dest: ", dest)
     console.log("Document: ", document)
+    var username = usernameEntry.textContent.replace("Logged in as: ", "");
+
     // Function to establish WebSocket connection
     function connectWebSocket(dest) {
         var usernameEntry = document.getElementById("usernameEntry");
@@ -79,6 +81,11 @@ $(document).ready(function() {
 
         // Event listener for like buttons
         $(document).on('click', '.like-btn', function() {
+            if (username =="Guest") {
+                // Show a popup informing the user to login
+                alert('You need to login to use the like feature.');
+                return; // Stop further execution
+            }
             // Get the comment ID from the data attribute
             var commentId = $(this).data('comment-id');
             socket.emit('like_comment', { "id": commentId, "destination": dest})
