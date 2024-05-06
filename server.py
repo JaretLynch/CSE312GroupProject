@@ -402,7 +402,7 @@ def like_comment(data):
             return
         elif  username != "Guest":
             Result=BillsComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
-            comment = SabresComments.find_one({"comment_id": data.get("id")})
+            comment = BillsComments.find_one({"comment_id": data.get("id")})
             NumOfLikes=len(comment.get("likes"))
     elif dest == "Sabres":
         comment = SabresComments.find_one({"comment_id": data.get("id")})
@@ -425,7 +425,7 @@ def like_comment(data):
             emit('like_alert')
             return
         elif  username != "Guest":
-            Result=Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
+            Result=comment.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
             comment = Comments.find_one({"comment_id": data.get("id")})
 
             NumOfLikes=len(comment.get("likes"))
