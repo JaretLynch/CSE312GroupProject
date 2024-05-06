@@ -80,11 +80,11 @@ bcrypt = Bcrypt()
 request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
 blocked_ips = {}
 
-limiter = Limiter(
-    key_func=get_remote_address,
-    app=app,
-    default_limits=["50 per 10 seconds"]
-)
+# limiter = Limiter(
+#     key_func=get_remote_address,
+#     app=app,
+#     default_limits=["50 per 10 seconds"]
+# )
 
 @app.before_request
 def block_ip():
@@ -99,8 +99,8 @@ def block_ip():
 @app.after_request
 def add_header(response):
     ip = get_remote_address()
-    if limiter.hit or response.status_code == 429:
-        blocked_ips[ip] = time()
+    # if limiter.hit or response.status_code == 429:
+    #     blocked_ips[ip] = time()
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
