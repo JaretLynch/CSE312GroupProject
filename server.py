@@ -131,7 +131,7 @@ def get_user_list(destination):
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["50 per 10 seconds"]
+    default_limits=["200 per 10 seconds"]
 )
 
 @app.before_request
