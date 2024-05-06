@@ -9,7 +9,7 @@ $(document).ready(function() {
         var usernameEntry = document.getElementById("usernameEntry");
         var username = usernameEntry.textContent.replace("Logged in as: ", "");
         console.log("Username:", username)
-        socket = io('wss://localhost:8080', 
+        socket = io('wss://cse312theprogrammers.me/', 
         { transports: ['websocket'], 
         upgrade: false, 
         query: {

@@ -11,6 +11,10 @@ import re
 from datetime import datetime
 from collections import defaultdict
 import time
+from flask import Flask, request, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from time import time
 
 app = Flask(__name__, template_folder='.')
 context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -74,20 +78,28 @@ media_id = db["media_id"]
 bcrypt = Bcrypt()
 
 request_counts = defaultdict(lambda: {'count': 0, 'blocked_until': 0})
+blocked_ips = {}
 
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["50 per 10 seconds"]
+)
 @app.before_request
-def limit_requests():
-    ip_address = request.remote_addr
-    current_time = time.time()
-    if request_counts[ip_address]['blocked_until'] < current_time:
-        request_counts[ip_address]['count'] = 0
-    request_counts[ip_address]['count'] += 1
-    if request_counts[ip_address]['count'] > 50:
-        request_counts[ip_address]['blocked_until'] = current_time + 30
-        return jsonify({'error': 'Too many requests. Please try again later.'}), 429
+def block_ip():
+    ip = request.remote_addr
+    if ip in blocked_ips:
+        if time() - blocked_ips[ip] < 30:
+            return jsonify({"error": "Too Many Requests. Try again later."}), 429
+        else:
+            del blocked_ips[ip]
+
     
 @app.after_request
 def add_header(response):
+    ip = request.remote_addr
+    if limiter.hit or response.status_code == 429:
+        blocked_ips[ip] = time()
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
@@ -391,7 +403,7 @@ def get_comments():
         comment['_id'] = str(comment['_id'])
         user_data = Users.find_one({"username": comment['author']}, {"profile_file": 1})
         if user_data and 'profile_file' in user_data:
-            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50" ">'
+            profile_img_html = f'<img src="{user_data["profile_file"]}" alt="Profile Pic width="50" height="50">'
             comment['profile_pic'] = profile_img_html
         comments_list.append(comment)
     return jsonify({'comments': comments_list})

@@ -5,3 +5,4 @@ flask_bcrypt
 flask_socketio
 gunicorn
 gevent
+flask_limiter
