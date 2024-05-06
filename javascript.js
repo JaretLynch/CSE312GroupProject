@@ -36,28 +36,14 @@ $(document).ready(function() {
 
         socket.on('user_joined', function() {
             socket.emit('get_user_list', {'room': dest, 'username': username});
+            console.log("User joing and destination is ")
+            console.log(dest)
         });
 
         socket.on('user_left', function(){
             socket.emit('get_user_list', {'room': dest, 'username': username});
-        });
-
-        socket.on('user_list', function(data) {
-            var activeUsers = data.user_list;
-            console.log("Active users: ", activeUsers)
-            $('#userlist').empty();
-            activeUsers.forEach(function(user) {
-                var userElement = $('<div class="user"></div>');
-                // Calculate the duration in minutes and seconds
-                var minutes = Math.floor(user[1] / 60);
-                var seconds = user[1] % 60;
-                // Format the duration string
-                var durationString = minutes + " minutes " + seconds + " seconds";
-                // Append the username and duration to the user element
-                userElement.append('<strong>' + user[0] + '</strong>');
-                userElement.append('<span> Active for ' + durationString + '</span>');
-                $('#userlist').append(userElement);
-            });
+            console.log("User leaving and destination is ")
+            console.log(dest)
         });
 
         $('#send-comment').click(function (event) {
@@ -97,12 +83,6 @@ $(document).ready(function() {
         });
         socket.on('filter_triggered', function() {
             document.getElementById('messagesent').innerText = "Your comment was not submitted due to containing a banned word."
-        });
-        socket.on('user_joined', function() {
-            socket.emit('get_user_list', {'dest': dest, 'username': username});
-        });
-        socket.on('user_left', function(){
-            socket.emit('get_user_list', {'dest': dest, 'username': username});
         });
         socket.on('Comment_Liked', function() {
             console.log("CommentLiked");
