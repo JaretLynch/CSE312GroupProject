@@ -35,13 +35,13 @@ $(document).ready(function() {
         });
 
         socket.on('user_joined', function() {
-            socket.emit('get_user_list', {'room': dest, 'username': username});
+            socket.emit('get_user_list', {'dest': dest, 'username': username});
             console.log("User joing and destination is ")
             console.log(dest)
         });
 
         socket.on('user_left', function(){
-            socket.emit('get_user_list', {'room': dest, 'username': username});
+            socket.emit('get_user_list', {'dest': dest, 'username': username});
             console.log("User leaving and destination is ")
             console.log(dest)
         });
