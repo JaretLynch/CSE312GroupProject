@@ -583,12 +583,13 @@ def send_user_list(data):
     user_list = get_user_list(dest)
     
     if user_list:
+        users=[]
         print("User List Exists")
         print(user_list)
         users_in_chat = user_list.get('UsersInChat', {})
-        filtered_user_list = [(user, time) for user, time in users_in_chat.items() if user != "Guest"]
-        print(filtered_user_list)
-        emit('user_list', {'user_list': filtered_user_list, 'dest': dest})
+        for user, entry_time in users_in_chat.items():
+            users.append((user, entry_time))
+        emit('user_list', {'user_list': users, 'dest': dest})
     else:
         print("UserList Empty")
         emit('user_list', {'user_list': [], 'dest': dest})  

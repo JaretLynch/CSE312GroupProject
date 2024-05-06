@@ -111,7 +111,7 @@ $(document).ready(function() {
             var entryTime = new Date(data.Entry_time);
            
             var activeUsers = data.user_list;
-         
+            
             $('#userlist').empty();
             activeUsers.forEach(function(user) {
                 var userElement = $('<div class="user"></div>');
