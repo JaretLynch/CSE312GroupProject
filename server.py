@@ -435,14 +435,21 @@ def create_comment(data):
     elif destination == "Sabres":
         SabresComments.insert_one(new_comment)
     if hasattr(request, 'sid'):
+        print("Balls")
         sid = request.sid
         active_users=get_active_users()
+        print("-------------------------")
+        print(active_users)
+        print('--------------------------')
         if sid in active_users:
+            print("Sid in active Users")
             message = data.get('message')
-            print(active_users)
             for item in active_users.items():
+                print("item is "+str(item))
                 user_username=item[0]
+                print("Username Is "+str(user_username))
                 user_chatroom=item[1]
+                print("Chatroom Is "+str(user_chatroom))
                 if user_chatroom == destination:
                     print("EMITTING TO "+str(user_username))
                     emit('Comment_Broadcasted', {'author': author, 'content': content,'comment_id':new_comment.get('comment_id'),'likes':"0"}, room=item)
