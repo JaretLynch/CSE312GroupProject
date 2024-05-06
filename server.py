@@ -237,7 +237,7 @@ def ServeSabresChatroom():
     chatroom_data = {'Name': 'Sabres',
                      'username':username,
                      'image': Sources.SabresSource,
-                     'coments': comments}
+                     'comments': comments}
     return render_template('chatroom.html', username=username, data=chatroom_data)
 
 @app.route('/img/<path:filename>')
@@ -399,14 +399,14 @@ def like_comment(data):
         username = active_users[request.sid]
         if username != "Guest" and username not in likes_list:
             Result=BillsComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
-            NumOfLikes=len(Result.get("likes"))
+            NumOfLikes=len(comment.get("likes"))
     elif dest == "Sabres":
         comment = SabresComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
         username = active_users[request.sid]
         if username != "Guest" and username not in likes_list:
             Result=SabresComments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
-            NumOfLikes=len(Result.get("likes"))
+            NumOfLikes=len(comment.get("likes"))
 
     else:
         comment = Comments.find_one({"comment_id": data.get("id")})
@@ -414,7 +414,7 @@ def like_comment(data):
         username = active_users[request.sid]
         if username != "Guest" and username not in likes_list:
             Result=Comments.update_one({"comment_id": data.get("id")}, {"$push": {"likes": username}})
-            NumOfLikes=len(Result.get("likes"))
+            NumOfLikes=len(comment.get("likes"))
 
 
     if hasattr(request, 'sid'):

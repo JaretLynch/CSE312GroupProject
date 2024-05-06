@@ -105,10 +105,10 @@ $(document).ready(function() {
         socket.on('user_list', function(data) {
             var now = new Date(data.now);
             var entryTime = new Date(data.Entry_time);
-            console.log("Now:", now);
-            console.log("Entry Time:", entryTime);
+            // console.log("Now:", now);
+            // console.log("Entry Time:", entryTime);
             var activeUsers = data.user_list;
-            console.log("Active users: ", activeUsers)
+            // console.log("Active users: ", activeUsers)
             $('#userlist').empty();
             activeUsers.forEach(function(user) {
                 var userElement = $('<div class="user"></div>');
