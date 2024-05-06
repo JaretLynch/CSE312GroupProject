@@ -1,5 +1,9 @@
 
 var intervalId;
+function welcome(){
+
+    console.log("Welcome")
+}
 $(document).ready(function() {
     var dest = $('#Name').text();
     console.log("Dest: ", dest)
