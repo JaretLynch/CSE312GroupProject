@@ -142,7 +142,6 @@ limiter = Limiter(
 @app.before_request
 @limiter.limit('50 per 10 seconds')
 def Before():
-
     ip = get_remote_address()
     blocked_ip = blocked_ips.find_one({"IP": ip})
 
