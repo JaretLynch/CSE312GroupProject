@@ -440,10 +440,12 @@ def create_comment(data):
         if sid in active_users:
             message = data.get('message')
             print(active_users)
-            for user_sid, (user_username, user_chatroom) in active_users.items():
+            for item in active_users.items():
+                user_username=item["username"]
+                user_chatroom=item["destination"]
                 if user_chatroom == destination:
                     print("EMITTING TO "+str(user_username))
-                    emit('Comment_Broadcasted', {'author': author, 'content': content,'comment_id':new_comment.get('comment_id'),'likes':"0"}, room=user_sid)
+                    emit('Comment_Broadcasted', {'author': author, 'content': content,'comment_id':new_comment.get('comment_id'),'likes':"0"}, room=item)
 
 @socketio.on('like_comment')
 def like_comment(data):
@@ -455,7 +457,7 @@ def like_comment(data):
     if dest == "Bills":
         comment = BillsComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid]
+        username = active_users[request.sid]["username"]
         if username in likes_list:
             emit('like_alert')
             return
@@ -466,7 +468,7 @@ def like_comment(data):
     elif dest == "Sabres":
         comment = SabresComments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid]
+        username = active_users[request.sid]["username"]
         if username in likes_list:
             emit('like_alert')
             return
@@ -479,7 +481,7 @@ def like_comment(data):
     else:
         comment = Comments.find_one({"comment_id": data.get("id")})
         likes_list = comment.get("likes")
-        username = active_users[request.sid]
+        username = active_users[request.sid]["username"]
         if username in likes_list:
             emit('like_alert')
             return
@@ -495,9 +497,10 @@ def like_comment(data):
         active_users=get_active_users()
         if sid in active_users:
             message = data.get('message')
-            for user_sid, (user_username, user_chatroom) in active_users.items():
+            for item in active_users.items():
+                user_chatroom=item["destination"]
                 if user_chatroom == dest:
-                    emit('Comment_Liked', {'comment_id':id,"NumOfLikes":NumOfLikes}, room=user_sid)
+                    emit('Comment_Liked', {'comment_id':id,"NumOfLikes":NumOfLikes}, room=item)
 
 def get_next_id():
     document = ID.find_one()
