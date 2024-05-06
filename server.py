@@ -102,13 +102,20 @@ def remove_active_user(sid):
 
 def update_user_list(destination, username):
     user_list_collection = db["UserList"]
-    user_list = user_list_collection.find_one({'destination': destination})
+    user_list = user_list_collection.find_one()
     if user_list:
-        users = user_list['users']
-        users[username] = datetime.now()
-        user_list_collection.update_one({'destination': destination}, {'$set': {'users': users}})
+        # Update existing entry for the destination if it exists
+        if destination in user_list:
+            users = user_list[destination]
+            users[username] = datetime.now()
+            user_list_collection.update_one({}, {'$set': {destination: users}})
+        else:
+            # Add a new entry for the destination
+            user_list_collection.update_one({}, {'$set': {destination: {username: datetime.now()}}})
     else:
-        user_list_collection.insert_one({'destination': destination, 'users': {username: datetime.now()}})
+        # If no entry exists, create a new one
+        user_list_collection.insert_one({destination: {username: datetime.now()}})
+
 def remove_user_from_list(dest, username):
     user_list_collection = db["UserList"]
     user_list_document = user_list_collection.find_one({'destination': dest})
@@ -119,7 +126,6 @@ def remove_user_from_list(dest, username):
             del user_list[username]
             # Update the document in the collection after removing the user
             user_list_collection.update_one({'destination': dest}, {'$set': {dest: user_list}})
-
 def get_user_list(destination):
     user_list_collection = db["UserList"]
     user_list = user_list_collection.find_one({'destination': destination})
